@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf, sev %}
+{% block title %}Events{% endblock %}{% block heading %}Events{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Event explorer</h2><p>{% if current_import %}Events from <a class="text-link" href="{{ url_for('import_report', import_id=current_import.id) }}">Import #{{ current_import.id }} · {{ current_import.filename }}</a>.{% else %}Normalised events from every source. Summary rows stand for many similar normal requests (pipeline data reduction).{% endif %}</p></div>
+<div class="button-row"><a class="btn btn-secondary" href="{{ url_for('events_export', import=import_id, q=args.q, dataset=args.dataset) }}">⬇ Export ECS NDJSON</a>{% if not is_vercel and has_role('analyst') %}<form method="post" action="{{ url_for('collect_windows') }}">{{ csrf() }}<button class="btn btn-secondary">↻ Windows Security log</button></form>{% endif %}</div></section>
+<section class="panel">
+<form class="filter-bar" method="get">{% if import_id %}<input type="hidden" name="import" value="{{ import_id }}">{% endif %}
+  <input name="q" value="{{ args.q }}" placeholder="Search details, user, IP, path, rule…">
+  <select name="dataset"><option value="">All datasets</option>{% for d in datasets %}<option {{ 'selected' if args.dataset == d }}>{{ d }}</option>{% endfor %}</select>
+  <select name="severity"><option value="">All severities</option>{% for s in ['Critical','High','Medium','Low','Info'] %}<option {{ 'selected' if args.severity == s }}>{{ s }}</option>{% endfor %}</select>
+  <button class="btn btn-primary">Filter</button><a class="btn btn-ghost" href="{{ url_for('events_page') }}">Reset</a></form>
+{% if events %}<div class="table-scroll"><table><thead><tr><th>TIME (LOG CLOCK)</th><th>TYPE</th><th>SOURCE</th><th>USER / SRC → DST</th><th>SEVERITY</th><th>DETAILS</th></tr></thead><tbody>
+{% for e in events %}<tr><td class="mono">{{ e.timestamp|ts }}<small class="cell-sub">#{{ e.id }}{% if e.hits > 1 %} · ×{{ e.hits|num }}{% endif %}</small></td>
+<td><b>{{ e.event_type }}</b><small class="cell-sub">{{ e.dataset or '' }}{% if e.http_status %} · HTTP {{ e.http_status }}{% endif %}{% if e.event_code and not e.http_status %} · {{ e.event_code }}{% endif %}</small></td>
+<td>{{ e.source }}</td>
+<td class="mono">{{ e.username|pii('user') or '—' }}<small class="cell-sub">{{ e.source_ip|pii('ip') or '—' }}{% if e.dest_ip %} → {{ e.dest_ip|pii('ip') }}{% if e.dest_port %}:{{ e.dest_port }}{% endif %}{% endif %}{% if e.country %} · {{ e.country }}{% endif %}</small></td>
+<td>{{ sev(e.severity) }}</td><td class="details-cell">{{ e.details|pii }}</td></tr>{% endfor %}
+</tbody></table></div><p class="form-hint">Showing the latest {{ events|length }} rows.</p>
+{% else %}<div class="empty-state"><span>⌕</span><b>No matching events</b><p>Try a different search, import logs or load the demo attacks.</p></div>{% endif %}
+</section>
+{% endblock %}

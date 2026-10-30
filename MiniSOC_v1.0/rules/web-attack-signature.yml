@@ -1,0 +1,28 @@
+id: web-attack-signature
+title: Web attack pattern in request
+status: stable
+level: low
+author: MiniSOC
+description: Request contains a SQL injection, XSS, path traversal or command injection pattern, or comes from a known attack tool. Individually low risk - most are blocked or fail - but risk adds up per source.
+logsource: {category: web}
+mitre: [T1190]
+detection:
+  sel_type:
+    event_type: WebAttack
+  sel_pattern:
+    attack_pattern|exists: true
+  condition: 1 of sel_*
+risk:
+  - {entity: source_ip, score: 15}
+dedup: 10m
+message: "Web attack pattern from {source_ip}: {signature} {url_path}"
+response: [block-attacker-ip]
+tests:
+  - name: sql injection pattern matches
+    expect: match
+    events:
+      - {event_type: WebRequest, source_ip: 203.0.113.7, url_path: "/item?id=1' or 1=1--", extra: {_attack_pattern: sqli}}
+  - name: normal request does not match
+    expect: no_match
+    events:
+      - {event_type: WebRequest, source_ip: 203.0.113.7, url_path: /index.html, http_status: 200}

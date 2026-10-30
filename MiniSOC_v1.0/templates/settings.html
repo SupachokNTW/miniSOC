@@ -1,0 +1,60 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Settings{% endblock %}{% block heading %}Settings{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Configuration &amp; compliance</h2><p>Changes are written to the audit log.</p></div></section>
+<form method="post" action="{{ url_for('settings_save') }}">{{ csrf() }}
+<section class="content-grid even">
+  <article class="panel"><div class="panel-heading"><div><h3>Retention &amp; privacy (Thai law)</h3><p>พ.ร.บ.คอมพิวเตอร์ · PDPA</p></div></div>
+    <div class="stack-form">
+      <label>Keep events for (days, minimum 90)<input name="retention_days" type="number" min="90" max="3650" value="{{ s.retention_days }}"></label>
+      <p class="form-hint">The Computer Crime Act requires service providers to keep computer traffic data for at least 90 days. Oldest event stored: {{ oldest|ts or 'none' }}. A daily job ({{ 'Vercel Cron' if is_vercel else 'background thread' }}) purges older data, keeping evidence of open incidents.</p>
+      <label>Mask personal data (IP, e-mail, usernames) for<select name="mask_pii">{% for v, l in [('viewer','Viewers only'),('non_admin','Everyone except admins'),('off','Nobody (no masking)')] %}<option value="{{ v }}" {{ 'selected' if s.mask_pii == v }}>{{ l }}</option>{% endfor %}</select></label>
+      <p class="form-hint">PDPA: logs with IP addresses and e-mails are personal data. Access is role-based, exports are masked for masked roles, and every export is audited.</p>
+    </div></article>
+  <article class="panel"><div class="panel-heading"><div><h3>Alerting</h3><p>Risk-based alerting and business hours</p></div></div>
+    <div class="stack-form">
+      <div class="form-row"><label>Risk threshold (points)<input name="rba_threshold" type="number" min="1" step="1" value="{{ s.rba_threshold|float|int }}"></label><label>Risk window (hours)<input name="rba_window_hours" type="number" min="1" value="{{ s.rba_window_hours|float|int }}"></label></div>
+      <div class="form-row"><label>Business hours (log clock)<input name="business_hours" value="{{ s.business_hours }}" pattern="\d{2}:\d{2}-\d{2}:\d{2}"></label><label>Business days (1=Mon)<input name="business_days" value="{{ s.business_days }}"></label></div>
+      <label>Never block (CIDR allow-list)<input name="allowlist" value="{{ s.allowlist }}"></label>
+      <div class="form-row"><label>Store events with severity ≥<select name="pipeline_store_min_severity">{% for v in ['Info','Low','Medium'] %}<option {{ 'selected' if s.pipeline_store_min_severity == v }}>{{ v }}</option>{% endfor %}</select></label>
+      <label class="check pad-top"><input type="checkbox" name="pipeline_aggregate_web" value="1" {{ 'checked' if s.pipeline_aggregate_web == '1' }}> Summarise normal web/API traffic</label></div>
+    </div></article>
+</section>
+<section class="panel"><div class="panel-heading"><div><h3>Response integrations (SOAR)</h3><p>Webhooks receive JSON; leave empty to fall back to manual tasks</p></div></div>
+  <div class="stack-form">
+    <label class="check"><input type="checkbox" name="soar_enabled" value="1" {{ 'checked' if s.soar_enabled == '1' }}> Run playbooks automatically</label>
+    <div class="form-row"><label>Chat notification webhook (Slack / Teams / Discord)<input name="notify_webhook_url" type="url" value="{{ s.notify_webhook_url }}" placeholder="https://hooks.slack.com/services/…"></label>
+    <label>Notify from severity<select name="notify_min_severity">{% for v in ['Medium','High','Critical'] %}<option {{ 'selected' if s.notify_min_severity == v }}>{{ v }}</option>{% endfor %}</select></label></div>
+    <div class="form-row"><label>WAF / firewall webhook (block)<input name="webhook_waf_url" type="url" value="{{ s.webhook_waf_url }}"></label><label>Identity provider webhook (disable user)<input name="webhook_identity_url" type="url" value="{{ s.webhook_identity_url }}"></label></div>
+    <div class="form-row"><label>EDR webhook (isolate host)<input name="webhook_edr_url" type="url" value="{{ s.webhook_edr_url }}"></label><label>Ticketing webhook<input name="webhook_ticket_url" type="url" value="{{ s.webhook_ticket_url }}"></label></div>
+    <label>Public base URL (for links in notifications)<input name="base_url" type="url" value="{{ s.base_url }}" placeholder="https://minisoc.example.com"></label>
+    <button class="btn btn-primary">Save settings</button>
+  </div>
+</section>
+</form>
+<section class="content-grid even">
+  <article class="panel"><div class="panel-heading"><div><h3>Blocklist feed</h3><p>For WAF / firewall external lists</p></div></div>
+    <pre class="code small">{{ feed_url }}</pre><p class="form-hint">Add <code>&amp;kind=all</code> to include domains. Treat the URL as a secret.</p>
+    <div class="inline-form"><form method="post" action="{{ url_for('rotate_feed_token') }}">{{ csrf() }}<button class="btn btn-secondary btn-small">Rotate token</button></form>
+    <form method="post" action="{{ url_for('test_webhook') }}">{{ csrf() }}<button class="btn btn-ghost btn-small">Send test notification</button></form>
+    <form method="post" action="{{ url_for('retention_now') }}">{{ csrf() }}<button class="btn btn-ghost btn-small">Run retention now</button></form></div></article>
+  <article class="panel" id="api"><div class="panel-heading"><div><h3>Ingest API keys</h3><p>Let web apps push structured JSON logs</p></div></div>
+    {% if new_key %}<div class="flash success">New key (shown once): <code>{{ new_key }}</code></div>{% endif %}
+    <pre class="code small">curl -X POST {{ ingest_url }} \
+  -H "Authorization: Bearer msoc_…" -H "Content-Type: application/json" \
+  -d '[{"@timestamp":"2026-10-30T10:00:00Z","event.action":"login_failure","user.name":"alice","source.ip":"203.0.113.9"}]'</pre>
+    <form class="inline-form" method="post" action="{{ url_for('api_key_create') }}">{{ csrf() }}<input name="name" placeholder="key name e.g. shop-api" required><button class="btn btn-secondary btn-small">Create key</button></form>
+    <div class="table-scroll"><table><tbody>{% for k in keys %}<tr class="{{ 'muted-row' if k.revoked }}"><td><b>{{ k.name }}</b><small class="cell-sub mono">{{ k.prefix }}… · created {{ k.created_at|ts }} · last used {{ k.last_used|ts or 'never' }}</small></td><td>{% if not k.revoked %}<form method="post" action="{{ url_for('api_key_revoke', key_id=k.id) }}">{{ csrf() }}<button class="btn btn-ghost btn-small">Revoke</button></form>{% else %}revoked{% endif %}</td></tr>{% endfor %}</tbody></table></div></article>
+</section>
+<section class="panel" id="users"><div class="panel-heading"><div><h3>Users &amp; roles</h3><p>viewer = read-only (PII masked by default) · analyst = triage, imports, approvals · admin = rules, settings, users</p></div></div>
+  <div class="table-scroll"><table><thead><tr><th>USER</th><th>ROLE</th><th>LAST LOGIN</th><th>UPDATE</th></tr></thead><tbody>
+  {% for u in users %}<tr class="{{ 'muted-row' if u.disabled }}"><td><b>{{ u.username }}</b>{% if u.disabled %}<small class="cell-sub">disabled</small>{% endif %}</td><td>{{ u.role }}</td><td class="mono">{{ u.last_login|ts or 'never' }}</td>
+  <td><form class="inline-form wrap-form" method="post" action="{{ url_for('user_update', user_id=u.id) }}">{{ csrf() }}<select name="role">{% for r in ['viewer','analyst','admin'] %}<option {{ 'selected' if u.role == r }}>{{ r }}</option>{% endfor %}</select><select name="disabled"><option value="0" {{ 'selected' if not u.disabled }}>active</option><option value="1" {{ 'selected' if u.disabled }}>disabled</option></select><input name="password" type="password" placeholder="new password (optional)" minlength="10"><button class="btn btn-secondary btn-small">Save</button></form></td></tr>{% endfor %}
+  </tbody></table></div>
+  <form class="inline-form wrap-form" method="post" action="{{ url_for('user_create') }}">{{ csrf() }}<input name="username" placeholder="username" required><input name="password" type="password" placeholder="password (10+ chars)" minlength="10" required><select name="role"><option>viewer</option><option selected>analyst</option><option>admin</option></select><button class="btn btn-primary btn-small">Add user</button></form>
+</section>
+<section class="panel"><div class="panel-heading"><div><h3>Audit log</h3><p>Latest 80 actions (logins, exports, changes, approvals)</p></div></div>
+  <div class="table-scroll"><table><thead><tr><th>TIME (UTC)</th><th>USER</th><th>IP</th><th>ACTION</th><th>DETAIL</th></tr></thead><tbody>
+  {% for a in audit_log %}<tr><td class="mono">{{ a.ts|ts }}</td><td>{{ a.username or '—' }}</td><td class="mono">{{ a.ip or '' }}</td><td><b>{{ a.action }}</b></td><td class="details-cell">{{ a.detail }}</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

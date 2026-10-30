@@ -1,0 +1,20 @@
+id: account-created
+title: New account created
+status: stable
+level: low
+author: MiniSOC
+description: A user account was created. Low risk alone; important when combined with privilege changes.
+logsource: {category: iam}
+mitre: [T1136]
+detection:
+  selection:
+    event_type: AccountCreated
+  condition: selection
+risk:
+  - {entity: username, score: 15}
+message: "Account created: {details}"
+tests:
+  - name: account created matches
+    expect: match
+    events:
+      - {event_type: AccountCreated, username: helpdesk2}

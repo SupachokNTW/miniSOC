@@ -1,0 +1,33 @@
+id: auth-account-takeover
+title: Account takeover - new country after failed logins
+status: stable
+level: high
+author: MiniSOC
+type: builtin
+handler: account_takeover
+description: A user logs in successfully from a country never seen for that user, right after several failed logins (UEBA baseline of previous successful logins, 90 days).
+logsource: {category: authentication}
+mitre: [T1078, T1110]
+params: {min_failures: 3, failures_window: 60m, lookback: 60m}
+risk:
+  - {entity: username, score: 90}
+  - {entity: source_ip, score: 40}
+alert: true
+dedup: 6h
+message: "{username} logged in from {country} ({source_ip}) after {failures} failures in {fail_window}; usual countries: {known_countries}"
+response: [protect-account]
+tests:
+  - name: new country after failures matches
+    expect: match
+    history:
+      - {event_type: LoginSuccess, username: alice, country: TH, source_ip: 192.0.2.10, at: "0s", repeat: 5, step: 1h}
+    events:
+      - {event_type: FailedLogin, username: alice, source_ip: 198.51.100.66, country: RU, at: 6h, repeat: 4, step: 30s}
+      - {event_type: LoginSuccess, username: alice, source_ip: 198.51.100.66, country: RU, at: 363m}
+  - name: usual country does not match
+    expect: no_match
+    history:
+      - {event_type: LoginSuccess, username: alice, country: TH, source_ip: 192.0.2.10, repeat: 5, step: 1h}
+    events:
+      - {event_type: FailedLogin, username: alice, source_ip: 192.0.2.10, country: TH, at: 6h, repeat: 4, step: 30s}
+      - {event_type: LoginSuccess, username: alice, source_ip: 192.0.2.10, country: TH, at: 363m}

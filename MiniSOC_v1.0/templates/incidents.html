@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% from "_macros.html" import sev, entity %}
+{% block title %}Incidents{% endblock %}{% block heading %}Incidents{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Incident queue</h2><p>One incident per risky entity. New detections for the same IP, user or host are attached instead of creating new alerts.</p></div><span class="subtle-chip">{{ incidents|length }} SHOWN</span></section>
+<section class="panel">
+<form class="filter-bar" method="get">
+  <select name="status">{% for v, l in [('open','Open (New + Investigating)'),('New','New'),('Investigating','Investigating'),('Resolved','Resolved'),('all','All')] %}<option value="{{ v }}" {{ 'selected' if status == v }}>{{ l }}</option>{% endfor %}</select>
+  <select name="severity"><option value="">All severities</option>{% for s in ['Critical','High','Medium','Low'] %}<option {{ 'selected' if severity == s }}>{{ s }}</option>{% endfor %}</select>
+  <input name="q" value="{{ query }}" placeholder="Search title, entity, rule…"><button class="btn btn-primary">Filter</button>
+</form>
+{% if incidents %}<div class="table-scroll"><table><thead><tr><th>INCIDENT</th><th>ENTITY</th><th>SEVERITY</th><th>RISK</th><th>DETECTIONS</th><th>ACTIVITY (LOG TIME)</th><th>STATUS</th></tr></thead><tbody>
+{% for i in incidents %}<tr class="click-row" onclick="location.href='{{ url_for('incident_page', alert_id=i.id) }}'">
+  <td class="wrap"><a href="{{ url_for('incident_page', alert_id=i.id) }}"><b>{{ i.title|pii }}</b></a><small class="cell-sub">#{{ i.id }} · {{ i.rule_name }}{% if i.mitre %} · {{ i.mitre }}{% endif %}</small></td>
+  <td>{% if i.entity_type %}{{ entity(i.entity_type, i.entity_value) }}{% else %}—{% endif %}</td>
+  <td>{{ sev(i.severity) }}</td><td><b>{{ (i.risk_score or 0)|round|int }}</b></td><td>{{ i.signal_count or 1 }}</td>
+  <td class="mono">{{ i.first_event_ts|ts }}<small class="cell-sub">→ {{ i.last_event_ts|ts }}</small></td>
+  <td><span class="status-badge {{ i.status|lower }}">{{ i.status }}</span>{% if i.disposition %}<small class="cell-sub">{{ i.disposition }}</small>{% endif %}</td>
+</tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty-state"><span>⚑</span><b>No incidents match</b><p>Change the filter, import logs or run a simulation.</p></div>{% endif %}
+</section>
+{% endblock %}

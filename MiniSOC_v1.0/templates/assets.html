@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Assets & Users{% endblock %}{% block heading %}Assets &amp; Users{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Context for every alert</h2><p>Risk on an asset is multiplied by its criticality (1 = ×0.6 … 5 = ×2.0); privileged accounts count ×1.5. Internal IPs and accounts seen in logs are auto-discovered — set owners and criticality so incidents say what is at stake.</p></div></section>
+<section class="content-grid">
+  <article class="panel"><div class="panel-heading"><div><h3>Assets ({{ assets|length }})</h3><p>Servers, workstations and services</p></div></div>
+  <div class="table-scroll"><table><thead><tr><th>ASSET</th><th>CRITICALITY</th><th>OWNER</th><th>TAGS</th><th></th></tr></thead><tbody>
+  {% for a in assets %}<tr><td><b>{{ a.name or a.hostname or a.ip }}</b><small class="cell-sub mono">{{ a.ip or '' }} {{ a.hostname or '' }}{% if a.auto %} · auto{% endif %}</small></td>
+    <td>{% if has_role('analyst') %}<form class="inline-form" method="post" action="{{ url_for('asset_save') }}">{{ csrf() }}<input type="hidden" name="id" value="{{ a.id }}"><input type="hidden" name="ip" value="{{ a.ip or '' }}"><input type="hidden" name="hostname" value="{{ a.hostname or '' }}"><input type="hidden" name="name" value="{{ a.name or '' }}"><input type="hidden" name="owner" value="{{ a.owner or '' }}"><input type="hidden" name="tags" value="{{ a.tags or '' }}">
+      <select name="criticality" onchange="this.form.submit()">{% for c in range(1,6) %}<option value="{{ c }}" {{ 'selected' if a.criticality == c }}>{{ c }} {{ ['','low','minor','normal','important','crown jewel'][c] }}</option>{% endfor %}</select></form>{% else %}{{ a.criticality }}{% endif %}</td>
+    <td>{{ a.owner or '—' }}</td><td>{{ a.tags or '—' }}</td>
+    <td>{% if has_role('analyst') %}<form method="post" action="{{ url_for('asset_delete', asset_id=a.id) }}">{{ csrf() }}<button class="btn btn-ghost btn-small">✕</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5"><small class="cell-sub">No assets yet.</small></td></tr>{% endfor %}</tbody></table></div></article>
+  <article class="panel">{% if has_role('analyst') %}<div class="panel-heading"><div><h3>Add / update asset</h3><p>Matched by IP or hostname</p></div></div>
+    <form class="stack-form" method="post" action="{{ url_for('asset_save') }}">{{ csrf() }}
+      <div class="form-row"><label>IP<input name="ip" placeholder="10.0.0.5"></label><label>Hostname<input name="hostname" placeholder="db-01"></label></div>
+      <label>Name<input name="name" placeholder="Customer database"></label>
+      <div class="form-row"><label>Criticality<select name="criticality">{% for c in range(1,6) %}<option value="{{ c }}" {{ 'selected' if c == 3 }}>{{ c }}</option>{% endfor %}</select></label><label>Owner<input name="owner" placeholder="team / person"></label></div>
+      <label>Tags<input name="tags" placeholder="DMZ, PII, payment"></label><button class="btn btn-primary">Save asset</button></form>
+    <form class="stack-form" method="post" action="{{ url_for('asset_import') }}" enctype="multipart/form-data">{{ csrf() }}<label>Import CSV (ip, hostname, name, criticality, owner, tags)<input type="file" name="csvfile" accept=".csv" required></label><button class="btn btn-secondary btn-small">Import CSV</button></form>{% else %}<p class="form-hint">Analysts can edit the inventory.</p>{% endif %}
+  </article>
+</section>
+<section class="panel" id="identities"><div class="panel-heading"><div><h3>Identities ({{ identities|length }})</h3><p>Accounts seen in authentication, IAM, API and cloud logs</p></div></div>
+<div class="table-scroll"><table><thead><tr><th>USERNAME</th><th>NAME</th><th>DEPARTMENT</th><th>EMAIL</th><th>PRIVILEGED</th><th></th></tr></thead><tbody>
+{% for u in identities %}<tr><td class="mono">{{ u.username|pii('user') }}{% if u.auto %}<small class="cell-sub">auto</small>{% endif %}</td><td>{{ u.display_name or '—' }}</td><td>{{ u.department or '—' }}</td><td>{{ (u.email or '—')|pii }}</td>
+<td>{% if has_role('analyst') %}<form method="post" action="{{ url_for('identity_save') }}">{{ csrf() }}<input type="hidden" name="username" value="{{ u.username }}"><input type="hidden" name="display_name" value="{{ u.display_name or '' }}"><input type="hidden" name="department" value="{{ u.department or '' }}"><input type="hidden" name="email" value="{{ u.email or '' }}"><input type="hidden" name="privileged" value="{{ 0 if u.privileged else 1 }}"><button class="btn btn-small {{ 'btn-secondary' if u.privileged else 'btn-ghost' }}">{{ 'Privileged ×1.5' if u.privileged else 'Standard' }}</button></form>{% else %}{{ 'Yes' if u.privileged else 'No' }}{% endif %}</td>
+<td>{% if has_role('analyst') %}<form method="post" action="{{ url_for('identity_delete', identity_id=u.id) }}">{{ csrf() }}<button class="btn btn-ghost btn-small">✕</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="6"><small class="cell-sub">No identities yet.</small></td></tr>{% endfor %}</tbody></table></div>
+{% if has_role('analyst') %}<form class="inline-form wrap-form" method="post" action="{{ url_for('identity_save') }}">{{ csrf() }}<input name="username" placeholder="username" required><input name="display_name" placeholder="Full name"><input name="department" placeholder="Department"><input name="email" placeholder="email"><label class="check"><input type="checkbox" name="privileged" value="1"> privileged</label><button class="btn btn-secondary btn-small">Save identity</button></form>{% endif %}
+</section>
+{% endblock %}

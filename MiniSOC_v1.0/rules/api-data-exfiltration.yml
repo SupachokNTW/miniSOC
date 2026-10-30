@@ -1,0 +1,31 @@
+id: api-data-exfiltration
+title: Abnormal data volume pulled through the API
+status: stable
+level: high
+author: MiniSOC
+type: builtin
+handler: api_exfiltration
+description: A user or API token downloads far more data in one hour than its 7-day baseline (>= 5x and >= 100 MB). Without a baseline, 500 MB in an hour triggers.
+logsource: {category: api}
+mitre: [T1567, T1530]
+params: {entity_field: username, min_bytes: 104857600, factor: 5, baseline_days: 7}
+risk:
+  - {entity: username, score: 80}
+  - {entity: source_ip, score: 20}
+alert: true
+dedup: 6h
+message: "{entity} pulled {volume} via API in one hour ({baseline})"
+response: [protect-account]
+tests:
+  - name: 900 MB after a 5 MB/h baseline matches
+    expect: match
+    history:
+      - {event_type: ApiRequest, username: svc-report, bytes_out: 5000000, at: "-30h", repeat: 24, step: 1h}
+    events:
+      - {event_type: ApiRequest, username: svc-report, source_ip: 203.0.113.80, bytes_out: 30000000, repeat: 30, step: 60s}
+  - name: normal volume does not match
+    expect: no_match
+    history:
+      - {event_type: ApiRequest, username: svc-report, bytes_out: 5000000, at: "-30h", repeat: 24, step: 1h}
+    events:
+      - {event_type: ApiRequest, username: svc-report, bytes_out: 6000000}

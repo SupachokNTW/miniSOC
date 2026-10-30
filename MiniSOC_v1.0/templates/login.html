@@ -1,0 +1,16 @@
+{% from "_macros.html" import csrf %}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · MiniSOC</title><link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head>
+<body class="auth-body"><main class="auth-card">
+  <div class="brand"><span class="brand-mark">M</span><span><b>MiniSOC</b><small>SECURITY OPERATIONS</small></span></div>
+  <h2>Sign in</h2>
+  {% for p in config_problems %}<div class="flash error">⚠ {{ p }}</div>{% endfor %}
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for c, m in messages %}<div class="flash {{ c }}">{{ m }}</div>{% endfor %}{% endwith %}
+  <form method="post" class="stack-form">{{ csrf() }}
+    <label>Username<input name="username" autocomplete="username" required autofocus></label>
+    <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn btn-primary btn-wide">Sign in</button>
+  </form>
+  {% if no_users %}<p class="form-hint">No account exists yet. {% if is_vercel %}Set <code>MINISOC_ADMIN_USER</code> and <code>MINISOC_ADMIN_PASSWORD</code> in the Vercel project's environment variables, then redeploy.{% else %}Open MiniSOC from this computer (http://127.0.0.1:5055) to create the first administrator.{% endif %}</p>{% endif %}
+  <p class="form-hint">Console logins are themselves monitored: repeated failures raise detections and temporarily lock the account.</p>
+</main></body></html>

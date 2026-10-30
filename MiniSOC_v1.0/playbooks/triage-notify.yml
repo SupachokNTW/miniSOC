@@ -1,0 +1,10 @@
+id: triage-notify
+title: Notify the team and open a ticket
+description: Every High/Critical incident is posted to chat (Slack / Teams / Discord webhook) and to the ticketing webhook. Status is left as New so MTTA measures real analyst response.
+trigger:
+  on: [created, escalated]
+  min_severity: High
+mode: auto
+actions:
+  - {type: notify}
+  - {type: create_ticket}

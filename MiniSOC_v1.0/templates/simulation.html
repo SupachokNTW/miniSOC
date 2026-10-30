@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Simulation{% endblock %}{% block heading %}Attack Simulation{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Purple team: do the rules really catch it?</h2><p>Each scenario replays a realistic synthetic attack (documentation IPs, labelled "Simulation") through the real pipeline and checks which rules fire. Nothing is sent to any real system. Delete simulation data any time from Log Import.</p></div>
+{% if has_role('analyst') %}<form method="post" action="{{ url_for('simulation_run') }}">{{ csrf() }}<input type="hidden" name="scenario" value="all"><button class="btn btn-primary">▶ Run all scenarios</button></form>{% endif %}</section>
+<section class="scenario-grid">{% for key, sc in scenarios.items() %}{% set last = (runs|selectattr('scenario','equalto',key)|first) %}
+  <article class="panel scenario"><div class="rule-top"><b>{{ sc[0] }}</b>{% if last %}<span class="status-badge {{ 'resolved' if last.passed else 'new' }}">{{ 'DETECTED' if last.passed else 'MISSED' }}</span>{% else %}<span class="status-badge investigating">not run</span>{% endif %}</div>
+  <p>{{ sc[3] }}</p><div class="chips">{% for r in sc[2] %}<a class="chip {{ 'ok' if last and r in last.fired else ('bad' if last else '') }}" href="{{ url_for('rule_page', rule_id=r) }}">{{ r }}</a>{% endfor %}</div>
+  {% if has_role('analyst') %}<form method="post" action="{{ url_for('simulation_run') }}">{{ csrf() }}<input type="hidden" name="scenario" value="{{ key }}"><button class="btn btn-secondary btn-small">Run</button></form>{% endif %}</article>{% endfor %}
+</section>
+<section class="panel"><div class="panel-heading"><div><h3>History</h3><p>Expected vs fired rules</p></div></div>
+{% if runs %}<div class="table-scroll"><table><thead><tr><th>RUN</th><th>RESULT</th><th>EXPECTED</th><th>ALSO FIRED</th><th>DATA</th></tr></thead><tbody>
+{% for r in runs %}<tr><td><b>{{ r.title }}</b><small class="cell-sub">#{{ r.id }} · {{ r.created_at|ts }} UTC · {{ r.events }} events</small></td><td><span class="status-badge {{ 'resolved' if r.passed else 'new' }}">{{ 'pass' if r.passed else 'missed: ' ~ r.missing|join(', ') }}</span></td>
+<td class="details-cell">{{ r.expected|join(', ') }}</td><td class="details-cell">{{ r.fired|reject('in', r.expected)|join(', ') or '—' }}</td><td>{% if r.import_id %}<a class="text-link" href="{{ url_for('import_report', import_id=r.import_id) }}">report</a>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-state small"><b>No runs yet</b></div>{% endif %}</section>
+{% endblock %}

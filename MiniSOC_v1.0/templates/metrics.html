@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Metrics{% endblock %}{% block heading %}Metrics{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Is the SOC getting better?</h2><p>Last {{ m.days }} days. MTTD = first malicious event → incident; MTTA = incident → first triage; MTTR = incident → resolved. Importing old logs inflates MTTD — it measures how late the data arrived.</p></div>
+<div class="tabs">{% for d in [7, 30, 90] %}<a class="{{ 'active' if m.days == d }}" href="?days={{ d }}">{{ d }} days</a>{% endfor %}</div></section>
+<section class="stats-grid five">
+  <article class="stat-card"><div class="stat-top"><span>MTTD</span></div><strong>{{ m.mttd }}</strong><small>{{ m.mttd_n }} incident(s)</small></article>
+  <article class="stat-card"><div class="stat-top"><span>MTTA</span></div><strong>{{ m.mtta }}</strong><small>{{ m.mtta_n }} acknowledged</small></article>
+  <article class="stat-card"><div class="stat-top"><span>MTTR</span></div><strong>{{ m.mttr }}</strong><small>{{ m.mttr_n }} resolved</small></article>
+  <article class="stat-card"><div class="stat-top"><span>False-positive rate</span></div><strong>{{ m.fp_rate if m.fp_rate is not none else '—' }}{% if m.fp_rate is not none %}%{% endif %}</strong><small>{{ m.resolved }} resolved with disposition</small></article>
+  <article class="stat-card"><div class="stat-top"><span>Alert reduction</span></div><strong>{{ m.alert_reduction if m.alert_reduction is not none else '—' }}{% if m.alert_reduction is not none %}%{% endif %}</strong><small>{{ m.signals|num }} detections → {{ m.incidents }} incidents</small></article>
+</section>
+<section class="content-grid">
+  <article class="panel chart-panel"><div class="panel-heading"><div><h3>Volume funnel per day</h3><p>Records ingested, detections, incidents (by ingest date)</p></div></div><div class="chart-wrap tall"><canvas id="funnel"></canvas><div id="funnelEmpty" class="empty-chart" hidden>No data.</div></div></article>
+  <article class="panel"><div class="panel-heading"><div><h3>Data volume</h3><p>Cost control: records vs stored rows</p></div></div>
+    <div class="mini-table"><span>STORAGE</span><div><span>Records ingested</span><b>{{ m.events|num }}</b></div><div><span>Rows stored</span><b>{{ m.stored|num }}</b></div><div><span>Reduction</span><b>{{ m.storage_reduction if m.storage_reduction is not none else '—' }}%</b></div>
+    <span>BY DATASET (RECORDS / ROWS)</span>{% for d in m.datasets %}<div><span>{{ d.dataset }}</span><b>{{ d.events|num }} / {{ d.rows|num }}</b></div>{% endfor %}
+    <span>DISPOSITIONS</span>{% for k, v in m.dispositions.items() %}<div><span>{{ k }}</span><b>{{ v }}</b></div>{% else %}<div><span>No resolved incidents yet</span></div>{% endfor %}
+    <span>PURPLE TEAM</span><div><span>Scenarios passing (latest run)</span><b>{{ m.sim_passed }}/{{ m.simulations|length }}</b></div></div>
+  </article>
+</section>
+<section class="panel"><div class="panel-heading"><div><h3>Rule quality</h3><p>Use dispositions to find noisy rules worth tuning or disabling</p></div><a class="text-link" href="{{ url_for('detection_page') }}">Detection →</a></div>
+{% if m.rules %}<div class="table-scroll"><table><thead><tr><th>RULE</th><th>DETECTIONS</th><th>INCIDENTS</th><th>RESOLVED</th><th>TRUE POS.</th><th>FALSE POS.</th><th>FP RATE</th><th>ADVICE</th></tr></thead><tbody>
+{% for r in m.rules %}<tr><td><a href="{{ url_for('rule_page', rule_id=r.rule_id) }}"><b>{{ r.title }}</b></a><small class="cell-sub">{{ r.rule_id }}</small></td><td>{{ r.signals|num }}</td><td>{{ r.incidents }}</td><td>{{ r.resolved }}</td><td>{{ r.tp }}</td><td>{{ r.fp }}</td><td>{{ r.fp_rate ~ '%' if r.fp_rate is not none else '—' }}</td><td class="{{ 'warn-text' if r.advice }}">{{ r.advice or '—' }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-state small"><b>No detections in this period</b></div>{% endif %}</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const daily = {{ m.daily|tojson }};
+const c = document.getElementById('funnel');
+if (!daily.length || typeof Chart === 'undefined') { c.hidden = true; document.getElementById('funnelEmpty').hidden = false; }
+else new Chart(c, {type:'bar', data:{labels: daily.map(d => d.day), datasets:[
+  {label:'Records', data: daily.map(d => d.events), backgroundColor:'rgba(125,140,163,.55)', yAxisID:'y'},
+  {label:'Detections', data: daily.map(d => d.signals), backgroundColor:'#e7b93e', yAxisID:'y1'},
+  {label:'Incidents', data: daily.map(d => d.incidents), backgroundColor:'#f05252', yAxisID:'y1'}]},
+  options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#a4adbb', boxWidth:10}}},
+    scales:{x:{grid:{display:false}, ticks:{color:'#8791a2'}}, y:{type:'logarithmic', position:'left', ticks:{color:'#8791a2'}, grid:{color:'rgba(150,160,180,.12)'}, title:{display:true, text:'records (log)', color:'#8791a2'}},
+            y1:{position:'right', beginAtZero:true, ticks:{precision:0, color:'#8791a2'}, grid:{display:false}, title:{display:true, text:'detections / incidents', color:'#8791a2'}}}}});
+</script>
+{% endblock %}

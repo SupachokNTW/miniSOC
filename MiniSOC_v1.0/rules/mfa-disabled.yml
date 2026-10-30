@@ -1,0 +1,23 @@
+id: mfa-disabled
+title: MFA disabled or password changed after suspicious login
+status: stable
+level: medium
+author: MiniSOC
+description: MFA was removed from an account, or its password/e-mail was changed - common follow-up actions after an account takeover.
+logsource: {category: authentication}
+mitre: [T1556.006, T1098]
+detection:
+  sel_mfa:
+    event_type: MFADisabled
+  sel_change:
+    event_type: [PasswordChange, EmailChange]
+  condition: sel_mfa or sel_change
+risk:
+  - {entity: username, score: 30}
+dedup: 1h
+message: "{event_type} for {username} from {source_ip}"
+tests:
+  - name: mfa disabled matches
+    expect: match
+    events:
+      - {event_type: MFADisabled, username: alice, source_ip: 198.51.100.66}

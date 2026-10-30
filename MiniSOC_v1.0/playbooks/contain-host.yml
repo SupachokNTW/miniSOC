@@ -1,0 +1,18 @@
+id: contain-host
+title: Contain a host talking to malware C2
+description: >
+  An internal host sends command-and-control / miner traffic. Block the C2 destinations at the
+  edge right away (auto), and isolate the host after approval.
+trigger:
+  on: [created, escalated]
+  min_severity: High
+  rules: [net-malware-c2]
+mode: approval
+actions:
+  - {type: isolate_host}
+  - {type: blocklist_add, ttl_hours: 168, include_iocs: true}
+  - type: create_task
+    tasks:
+      - "Collect volatile evidence from {entity} (processes, network connections, cron/systemd, authorized_keys)"
+      - "Find the initial access path (SSH brute force? exploited web app?) and close it"
+      - "Rebuild {entity} from a known-good image and rotate its credentials"

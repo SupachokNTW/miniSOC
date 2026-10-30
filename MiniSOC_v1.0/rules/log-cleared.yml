@@ -1,0 +1,24 @@
+id: log-cleared
+title: Security log cleared or logging disabled
+status: stable
+level: high
+author: MiniSOC
+description: Windows audit log cleared (1102/104) or cloud audit logging stopped (CloudTrail StopLogging/DeleteTrail).
+logsource: {category: host}
+mitre: [T1070.001, T1562.008]
+detection:
+  sel_type:
+    event_type: LogCleared
+  sel_code:
+    event_code: ["1102", "104"]
+  condition: 1 of sel_*
+risk:
+  - {entity: host, score: 70}
+  - {entity: username, score: 30}
+alert: true
+message: "Logs cleared on {host} by {username}: {details}"
+tests:
+  - name: 1102 matches
+    expect: match
+    events:
+      - {event_type: LogCleared, event_code: "1102", host: DC01, username: administrator}

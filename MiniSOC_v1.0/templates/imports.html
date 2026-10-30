@@ -1,0 +1,98 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf %}
+{% block title %}Log Import{% endblock %}{% block heading %}Log Import{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Import &amp; analyse logs</h2><p>Upload an exported log file. The pipeline normalises it, runs every detection rule on the full data, then stores evidence and summarises normal traffic to save space. Files are never executed.</p></div><span class="subtle-chip">{{ imports|length }} IMPORTS</span></section>
+
+<section class="import-grid">
+  <article class="panel">
+    <div class="panel-heading"><div><h3>Upload log file</h3><p>Max {{ max_mb }} MB per request{% if is_vercel %} · large text logs are gzip-compressed in your browser first{% endif %}</p></div></div>
+    <form class="upload-form" id="uploadForm" method="post" action="{{ url_for('upload_import') }}" enctype="multipart/form-data">{{ csrf() }}
+      <label class="drop-zone" id="dropZone">
+        <input type="file" name="logfile" id="logfile" required accept=".xlsx,.xlsm,.csv,.tsv,.txt,.log,.json,.jsonl,.ndjson,.xml,.gz,text/*">
+        <span class="drop-icon">⇪</span>
+        <b id="fileLabel">Choose a file or drop it here</b>
+        <small>.xlsx · .csv · .json · .xml · .log · .txt · .gz</small>
+      </label>
+      <div class="form-row">
+        <label>Format<select name="format">{% for key, label in formats.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
+        <label>Time zone of timestamps<select name="timezone">{% for value, label in timezones %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+      </div>
+      <p class="form-hint">Most firewall exports (e.g. Sangfor AF) write local device time without a zone. Pick the device's zone if it differs from this computer (Thailand = UTC+07:00).</p>
+      <div class="form-row">
+        <label>Store events with severity ≥<select name="min_severity">{% for v in ['Info','Low','Medium','High'] %}<option {{ 'selected' if settings.pipeline_store_min_severity == v }}>{{ v }}</option>{% endfor %}</select></label>
+        <label class="check pad-top"><input type="checkbox" name="aggregate_web" value="1" {{ 'checked' if settings.pipeline_aggregate_web == '1' }}> Summarise normal web/API requests</label>
+      </div>
+      <p class="form-hint">Rules always see every record. Only storage is reduced: evidence of detections is always kept.</p>
+      <label class="check"><input type="checkbox" name="keep_unmatched" value="1" checked> Keep records that don't match a known pattern (as Info events)</label>
+      <label class="check"><input type="checkbox" name="allow_duplicate" value="1"> Import again even if an identical file was imported before</label>
+      <input type="hidden" name="client_gzip" id="clientGzip" value="0">
+      <button class="btn btn-primary btn-wide" id="uploadBtn">⇪ Import and analyse</button>
+      <p class="form-hint" id="uploadStatus"></p>
+    </form>
+  </article>
+
+  <article class="panel">
+    <div class="panel-heading"><div><h3>Supported sources</h3><p>Format is detected automatically</p></div></div>
+    <div class="format-list">
+      <div><b>Sangfor AF / NGAF reports</b><p>Security log export (.xlsx or .csv) from IPS, WAF, Botnet, Anti-DoS. Report period and filters are read from the header rows; payloads are decoded for IOCs.</p></div>
+      <div><b>Generic tables</b><p>CSV / TSV / Excel with a header row — column names such as Time, Src IP, Dst IP, Dst Port, Action, Severity, Signature, User, Message are mapped automatically.</p></div>
+      <div><b>Windows events</b><p>Event Viewer “Save as XML”, <code>wevtutil qe Security /f:xml</code>, Event Viewer CSV or <code>Get-WinEvent | Export-Csv</code>.</p></div>
+      <div><b>Web &amp; API</b><p>Apache / Nginx access logs, structured JSON application logs (login success/failure, password/role changes, API requests with bytes), API-gateway JSON.</p></div>
+      <div><b>Cloud, Linux &amp; JSON</b><p>AWS CloudTrail, auth.log / secure / syslog, JSON arrays, JSON Lines, Winlogbeat / Elastic exports. Apps can also push logs to <code>/api/ingest</code>.</p></div>
+    </div>
+    <div class="note-box"><b>Sample files</b><p>The <code>samples</code> folder has synthetic Sangfor AF, Nginx access, JSON app/API, CloudTrail, Linux auth.log and Windows XML logs.</p></div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-heading"><div><h3>Import history</h3><p>Each import keeps its own events, alerts and report</p></div></div>
+  {% if imports %}<div class="table-scroll"><table><thead><tr><th>IMPORT</th><th>SOURCE / FORMAT</th><th>LOG TIME RANGE (UTC)</th><th>RECORDS → STORED</th><th>DETECTIONS</th><th>ACTIONS</th></tr></thead><tbody>
+  {% for i in imports %}<tr>
+    <td><a class="text-link" href="{{ url_for('import_report', import_id=i.id) }}"><b>#{{ i.id }} · {{ i.filename[:60] }}</b></a><small class="cell-sub">Imported {{ i.created_at[:19].replace('T',' ') }} UTC · {{ (i.size_bytes / 1024)|round(1) }} KB</small></td>
+    <td>{{ i.vendor or 'Generic' }}<small class="cell-sub">{{ formats.get(i.file_format, i.file_format) }}</small></td>
+    <td class="mono">{{ (i.first_seen or '')[:16].replace('T',' ') }}<small class="cell-sub">→ {{ (i.last_seen or '')[:16].replace('T',' ') }}</small></td>
+    <td><b>{{ (i.raw_records or i.total_records)|num }}</b> → {{ (i.stored_events or i.event_count)|num }}{% if i.skipped %}<small class="cell-sub">{{ i.skipped }} skipped</small>{% endif %}</td>
+    <td>{{ i.signal_count or 0 }}{% if i.incident_count %} · <span class="severity-badge high">{{ i.incident_count }} incident(s)</span>{% endif %}</td>
+    <td><div class="inline-form"><a class="btn btn-small btn-secondary" href="{{ url_for('import_report', import_id=i.id) }}">Report</a><a class="btn btn-small btn-ghost" href="{{ url_for('events_page', import=i.id) }}">Events</a>
+      {% if has_role('analyst') %}<form method="post" action="{{ url_for('delete_import_route', import_id=i.id) }}" onsubmit="return confirm('Delete import #{{ i.id }} with all its events and detections?')">{{ csrf() }}<button class="btn btn-small btn-danger">Delete</button></form>{% endif %}</div></td>
+  </tr>{% endfor %}
+  </tbody></table></div>{% else %}<div class="empty-state"><span>⇪</span><b>No imports yet</b><p>Upload a firewall, Windows or Linux log export to get an analysis report.</p></div>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const input = document.getElementById('logfile');
+const label = document.getElementById('fileLabel');
+const zone = document.getElementById('dropZone');
+input.addEventListener('change', () => { label.textContent = input.files.length ? input.files[0].name : 'Choose a file or drop it here'; });
+['dragenter','dragover'].forEach(n => zone.addEventListener(n, e => { e.preventDefault(); zone.classList.add('dragging'); }));
+['dragleave','drop'].forEach(n => zone.addEventListener(n, e => { e.preventDefault(); zone.classList.remove('dragging'); }));
+zone.addEventListener('drop', e => { if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; input.dispatchEvent(new Event('change')); } });
+// Vercel accepts at most ~4.5 MB per request: gzip large text logs in the browser (5-20x smaller).
+const LIMIT = {{ max_mb }} * 1024 * 1024;
+const form = document.getElementById('uploadForm');
+const statusEl = document.getElementById('uploadStatus');
+form.addEventListener('submit', async (ev) => {
+  const file = input.files[0];
+  if (!file) return;
+  const binary = /\.(xlsx|xlsm|gz)$/i.test(file.name);
+  if (file.size <= LIMIT * 0.9 || binary) {
+    if (file.size > LIMIT) { ev.preventDefault(); statusEl.textContent = 'File is larger than ' + {{ max_mb }} + ' MB. Split it or export a shorter period.'; }
+    else statusEl.textContent = 'Uploading and analysing…';
+    return;
+  }
+  ev.preventDefault();
+  if (typeof CompressionStream === 'undefined') { statusEl.textContent = 'File too large and this browser cannot compress it. Gzip it manually (.gz) and upload again.'; return; }
+  statusEl.textContent = 'Compressing ' + (file.size / 1048576).toFixed(1) + ' MB in the browser…';
+  const gz = await new Response(file.stream().pipeThrough(new CompressionStream('gzip'))).blob();
+  if (gz.size > LIMIT) { statusEl.textContent = 'Still ' + (gz.size / 1048576).toFixed(1) + ' MB after compression. Split the file.'; return; }
+  const data = new FormData(form);
+  data.set('logfile', new File([gz], file.name + '.gz', {type: 'application/gzip'}));
+  data.set('client_gzip', '1');
+  statusEl.textContent = 'Uploading ' + (gz.size / 1048576).toFixed(1) + ' MB (compressed) and analysing…';
+  document.getElementById('uploadBtn').disabled = true;
+  const resp = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin'});
+  window.location = resp.url;
+});
+</script>
+{% endblock %}

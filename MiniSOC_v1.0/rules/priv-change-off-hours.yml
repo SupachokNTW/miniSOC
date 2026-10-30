@@ -1,0 +1,28 @@
+id: priv-change-off-hours
+title: Privilege change outside business hours
+status: stable
+level: high
+author: MiniSOC
+description: Role/permission/group changes or admin actions performed outside business hours (Settings -> business hours).
+logsource: {category: iam}
+mitre: [T1098]
+detection:
+  selection:
+    event_type: [PrivilegeChange, GroupMemberAdded, AdminAction, MFADisabled]
+    off_hours: true
+  condition: selection
+risk:
+  - {entity: username, score: 50}
+dedup: 1h
+message: "{event_type} by/for {username} at {timestamp} (outside business hours): {details}"
+falsepositives: [Planned maintenance windows]
+response: [protect-account]
+tests:
+  - name: role change at 02:30 matches
+    expect: match
+    events:
+      - {event_type: PrivilegeChange, username: it-admin, timestamp: "2026-01-06T02:30:00+07:00", extra: {_off_hours: true}}
+  - name: role change during the day does not match
+    expect: no_match
+    events:
+      - {event_type: PrivilegeChange, username: it-admin, extra: {_off_hours: false}}

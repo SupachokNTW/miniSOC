@@ -1,0 +1,23 @@
+id: priv-group-change
+title: Privileged group or role granted
+status: stable
+level: medium
+author: MiniSOC
+description: An account was added to an admin group or received a privileged role (any time of day).
+logsource: {category: iam}
+mitre: [T1098, T1078.003]
+detection:
+  sel_group:
+    event_type: GroupMemberAdded
+  sel_role:
+    event_type: PrivilegeChange
+  condition: sel_group or sel_role
+risk:
+  - {entity: username, score: 25}
+dedup: 1h
+message: "{event_type}: {details}"
+tests:
+  - name: group add matches
+    expect: match
+    events:
+      - {event_type: GroupMemberAdded, username: support, details: "add support to sudo"}

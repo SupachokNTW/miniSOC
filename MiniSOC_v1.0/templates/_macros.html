@@ -1,0 +1,3 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% macro sev(level) %}<span class="severity-badge {{ (level or 'info')|lower }}">{{ level or 'Info' }}</span>{% endmacro %}
+{% macro entity(type, value) %}<span class="entity entity-{{ type }}"><i>{{ {'ip':'IP','user':'USER','host':'HOST'}.get(type, type|upper) }}</i>{{ value|pii(type) }}</span>{% endmacro %}

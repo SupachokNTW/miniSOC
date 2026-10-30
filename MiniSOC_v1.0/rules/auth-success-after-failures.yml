@@ -1,0 +1,28 @@
+id: auth-success-after-failures
+title: Successful login after repeated failures
+status: stable
+level: high
+author: MiniSOC
+type: builtin
+handler: success_after_failures
+description: A login succeeds from an IP that produced many failures shortly before - the guessing may have worked.
+logsource: {category: authentication}
+mitre: [T1110, T1078]
+params: {min_failures: 5, window: 30m, lookback: 30m}
+risk:
+  - {entity: username, score: 70}
+  - {entity: source_ip, score: 40}
+alert: true
+dedup: 1h
+message: "{username} logged in from {source_ip} after {failures} failed attempts in {window} (tried: {tried_users})"
+response: [protect-account, block-attacker-ip]
+tests:
+  - name: success after six failures matches
+    expect: match
+    events:
+      - {event_type: FailedLogin, source_ip: 203.0.113.9, username: deploy, repeat: 6, step: 10s}
+      - {event_type: LoginSuccess, source_ip: 203.0.113.9, username: deploy, at: 90s}
+  - name: success without failures does not match
+    expect: no_match
+    events:
+      - {event_type: LoginSuccess, source_ip: 203.0.113.9, username: deploy}

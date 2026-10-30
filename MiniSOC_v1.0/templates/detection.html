@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf, sev %}
+{% block title %}Detection{% endblock %}{% block heading %}Detection-as-Code{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Rules are code</h2><p>Each rule is a Sigma-style YAML file in <code>rules/</code> with MITRE ATT&amp;CK mapping, a risk score and its own tests. Change them in Git, review, run <code>python tests/run_rule_tests.py</code> in CI, then deploy.</p></div>
+<div class="tabs"><a class="{{ 'active' if tab == 'rules' }}" href="?tab=rules">Rules ({{ rows|length }})</a><a class="{{ 'active' if tab == 'coverage' }}" href="?tab=coverage">ATT&amp;CK coverage {{ coverage.percent }}%</a></div></section>
+{% for e in errors %}<div class="flash error">Invalid rule file {{ e.file }}: {{ e.error }}</div>{% endfor %}
+{% if tab == 'coverage' %}
+<section class="panel">
+  <div class="panel-heading"><div><h3>MITRE ATT&amp;CK coverage — web service profile</h3><p>{{ coverage.covered }} of {{ coverage.total }} relevant techniques have at least one rule. Grey = gap to work on. ◎ = proven by a passing attack simulation.</p></div></div>
+  <div class="attack-matrix">{% for t in coverage.matrix %}<div class="tactic"><div class="tactic-head"><b>{{ t.name }}</b><small>{{ t.covered }}/{{ t.total }}</small></div>
+    {% for c in t.techniques %}<div class="tech {{ 'covered' if c.covered else 'gap' }}" title="{{ c.rules|join(', ') or 'No rule yet' }}"><span class="mono">{{ c.id }}{% if c.tested %} ◎{% endif %}</span>{{ c.name }}</div>{% endfor %}
+  </div>{% endfor %}</div>
+</section>
+{% else %}
+<section class="panel"><div class="table-scroll"><table><thead><tr><th>RULE</th><th>LEVEL</th><th>TYPE</th><th>RISK</th><th>ATT&amp;CK</th><th>TESTS</th><th>30-DAY MATCHES</th><th>FP RATE</th><th>STATE</th></tr></thead><tbody>
+{% for row in rows %}{% set r = row.rule %}<tr>
+  <td class="wrap"><a href="{{ url_for('rule_page', rule_id=r.id) }}"><b>{{ r.title }}</b></a><small class="cell-sub">{{ r.id }} · {{ r.category }}{% if r.alert %} · <span class="tag-direct">opens incident</span>{% endif %}</small></td>
+  <td>{{ sev(r.level) }}</td><td>{{ r.type }}{% if r.aggregate %}<small class="cell-sub">{{ r.aggregate.function }} ≥ {{ r.aggregate.threshold|int }}</small>{% endif %}</td>
+  <td>{% for x in r.risk %}<span class="risk-pill">{{ x.entity }} +{{ x.score|int }}</span> {% endfor %}</td>
+  <td class="mono">{{ r.mitre|join(', ') }}</td>
+  <td>{% if row.tests_passed is none %}<span class="status-badge new">none</span>{% elif row.tests_passed %}<span class="status-badge resolved">✓ {{ row.tests|length }}</span>{% else %}<span class="status-badge new">✗ failing</span>{% endif %}</td>
+  <td>{{ row.signals }}{% if row.last %}<small class="cell-sub">last {{ row.last|ts }}</small>{% endif %}</td>
+  <td>{% if row.fp_rate is not none %}<b class="{{ 'warn-text' if row.fp_rate >= 50 }}">{{ row.fp_rate }}%</b><small class="cell-sub">{{ row.resolved }} resolved</small>{% else %}—{% endif %}</td>
+  <td>{% if has_role('admin') %}<form method="post" action="{{ url_for('toggle_rule', rule_id=r.id) }}">{{ csrf() }}<input type="hidden" name="enabled" value="{{ 0 if row.enabled else 1 }}"><button class="btn btn-small {{ 'btn-secondary' if row.enabled else 'btn-ghost' }}">{{ 'Enabled' if row.enabled else 'Disabled' }}</button></form>{% else %}{{ 'Enabled' if row.enabled else 'Disabled' }}{% endif %}</td>
+</tr>{% endfor %}</tbody></table></div></section>
+<div class="note-box wide-note"><b>Tuning loop</b><p>Resolve incidents with a disposition. Rules whose incidents are mostly false positives show a high FP rate here and on Metrics — tighten their selection/threshold in YAML (with a new test) or lower their risk score instead of letting them flood the queue.</p></div>
+{% endif %}
+{% endblock %}

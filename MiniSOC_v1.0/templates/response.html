@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf, sev %}
+{% block title %}Response{% endblock %}{% block heading %}Response (SOAR){% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>Automated response</h2><p>Playbooks in <code>playbooks/*.yml</code> run when incidents open or escalate. Low-impact steps (blocklist, notify, ticket) run automatically; disruptive ones (disable account, isolate host) wait for approval.</p></div><span class="subtle-chip">SOAR {{ 'ON' if settings.soar_enabled == '1' else 'OFF' }}</span></section>
+{% for e in errors %}<div class="flash error">Invalid playbook {{ e.file }}: {{ e.error }}</div>{% endfor %}
+{% if pending %}<section class="panel"><div class="panel-heading"><div><h3>Awaiting approval ({{ pending|length }})</h3><p>Review the planned actions, then approve or reject</p></div></div>
+{% for r in pending %}<div class="run-card status-pending_approval"><div class="run-top"><b>{{ r.playbook_title }}</b>{{ sev(r.alert_severity) }}<a class="text-link" href="{{ url_for('incident_page', alert_id=r.alert_id) }}">Incident #{{ r.alert_id }} · {{ (r.alert_title or '')|pii }}</a></div>
+<ul>{% for a in r.actions %}<li>{{ a.detail|pii }}</li>{% endfor %}</ul>
+{% if has_role('analyst') %}<div class="inline-form"><form method="post" action="{{ url_for('playbook_decision', run_id=r.id, decision='approve') }}">{{ csrf() }}<button class="btn btn-primary btn-small">Approve &amp; run</button></form><form method="post" action="{{ url_for('playbook_decision', run_id=r.id, decision='reject') }}">{{ csrf() }}<button class="btn btn-ghost btn-small">Reject</button></form></div>{% endif %}</div>{% endfor %}
+</section>{% endif %}
+<section class="content-grid even">
+  <article class="panel"><div class="panel-heading"><div><h3>Playbooks</h3><p>{{ playbooks|length }} loaded</p></div></div>
+  {% for p in playbooks %}<details class="finding"><summary><span class="severity-badge {{ 'high' if p.mode == 'approval' else 'low' }}">{{ p.mode }}</span><b>{{ p.title }}</b><small>{{ p.id }}</small></summary>
+    <p class="finding-summary">{{ p.description }}</p><div class="finding-block"><span>TRIGGER</span><ul><li>on {{ p.trigger.on|join(', ') if p.trigger.on is iterable and p.trigger.on is not string else p.trigger.on }} · severity ≥ {{ p.trigger.min_severity or 'Low' }}{% if p.trigger.entity_types %} · entity {{ p.trigger.entity_types|join(', ') }}{% endif %}{% if p.trigger.entity_scope %} ({{ p.trigger.entity_scope }}){% endif %}{% if p.trigger.rules %} · rules {{ p.trigger.rules|join(', ') }}{% endif %}</li></ul></div>
+    <div class="finding-block rec"><span>ACTIONS</span><ul>{% for a in p.actions %}<li class="mono">{{ a.type }}{% if a.ttl_hours %} (ttl {{ a.ttl_hours }} h){% endif %}{% if a.tasks %} — {{ a.tasks|length }} task(s){% endif %}</li>{% endfor %}</ul></div></details>{% endfor %}
+  </article>
+  <article class="panel"><div class="panel-heading"><div><h3>Blocklist feed</h3><p>{{ blocklist|selectattr('active')|list|length }} active entries</p></div></div>
+    <p class="form-hint">Point your WAF / firewall's external IP list (e.g. FortiGate threat feed, Palo Alto EDL, Cloudflare/NGINX script) at the feed URL shown in <a class="text-link" href="{{ url_for('settings_page') }}">Settings</a>. Internal and allow-listed ranges are never added.</p>
+    {% if has_role('analyst') %}<form class="inline-form wrap-form" method="post" action="{{ url_for('blocklist_add_route') }}">{{ csrf() }}<input name="value" placeholder="IP or domain" required><input name="reason" placeholder="Reason"><select name="ttl_hours"><option value="24">24 h</option><option value="72" selected>72 h</option><option value="168">7 days</option><option value="">permanent</option></select><button class="btn btn-secondary btn-small">Block</button></form>{% endif %}
+    <div class="table-scroll"><table><thead><tr><th>INDICATOR</th><th>REASON</th><th>EXPIRES</th><th></th></tr></thead><tbody>
+    {% for b in blocklist[:80] %}<tr class="{{ '' if b.active else 'muted-row' }}"><td class="mono">{{ b.value|pii('ip') }}<small class="cell-sub">{{ b.kind }} · {{ b.source }}</small></td><td class="details-cell">{{ b.reason|pii }}</td><td class="mono">{{ b.expires_at|ts if b.expires_at else 'never' }}</td>
+    <td>{% if b.active and has_role('analyst') %}<form method="post" action="{{ url_for('blocklist_remove_route', entry_id=b.id) }}">{{ csrf() }}<button class="btn btn-ghost btn-small">Unblock</button></form>{% elif not b.active %}<small class="cell-sub">inactive</small>{% endif %}</td></tr>{% else %}<tr><td colspan="4"><small class="cell-sub">Empty</small></td></tr>{% endfor %}
+    </tbody></table></div>
+  </article>
+</section>
+<section class="panel"><div class="panel-heading"><div><h3>Run log</h3><p>Every automated or approved action is recorded</p></div></div>
+{% if runs %}<div class="table-scroll"><table><thead><tr><th>RUN</th><th>INCIDENT</th><th>STATUS</th><th>ACTIONS</th></tr></thead><tbody>
+{% for r in runs %}<tr><td><b>{{ r.playbook_title }}</b><small class="cell-sub">#{{ r.id }} · {{ r.created_at|ts }} UTC{% if r.approved_by %} · by {{ r.approved_by }}{% endif %}</small></td>
+<td><a class="text-link" href="{{ url_for('incident_page', alert_id=r.alert_id) }}">#{{ r.alert_id }}</a></td><td><span class="status-badge {{ 'resolved' if r.status == 'done' else ('investigating' if r.status in ('partial','pending_approval') else 'new') }}">{{ r.status|replace('_',' ') }}</span></td>
+<td class="details-cell">{% for a in r.actions %}<div><span class="mono">{{ a.type }}</span>: {{ a.status }} — {{ a.detail|pii }}</div>{% endfor %}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-state small"><b>No playbook runs yet</b></div>{% endif %}</section>
+{% endblock %}

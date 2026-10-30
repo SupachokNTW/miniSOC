@@ -1,0 +1,27 @@
+id: ueba-new-country-login
+title: Login from a new country (UEBA)
+status: stable
+level: low
+author: MiniSOC
+type: builtin
+handler: new_country_login
+description: Successful login from a country that is not in the user's 90-day baseline. Low risk on its own; adds up with other signals (risk-based alerting).
+logsource: {category: authentication}
+mitre: [T1078]
+params: {lookback: 1h}
+risk:
+  - {entity: username, score: 25}
+dedup: 24h
+message: "{username} logged in from new country {country} ({source_ip}); usual: {known_countries}"
+falsepositives: [Business travel, VPN exit nodes]
+tests:
+  - name: new country matches
+    expect: match
+    history:
+      - {event_type: LoginSuccess, username: bob, country: TH, repeat: 3, step: 1h}
+    events:
+      - {event_type: LoginSuccess, username: bob, country: JP, at: 5h}
+  - name: user without baseline does not match
+    expect: no_match
+    events:
+      - {event_type: LoginSuccess, username: newbie, country: JP}

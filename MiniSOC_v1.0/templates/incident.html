@@ -1,0 +1,66 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf, sev, entity %}
+{% block title %}Incident #{{ i.id }}{% endblock %}{% block heading %}Incident #{{ i.id }}{% endblock %}
+{% block content %}
+<section class="verdict verdict-{{ i.severity|lower }}">
+  <div class="verdict-badge"><small>{{ i.status|upper }}</small><b>{{ i.severity }}</b></div>
+  <div class="verdict-text"><b>{{ i.title|pii }}</b><p>{{ i.explanation|pii }}</p>
+  <p>{% if i.entity_type %}{{ entity(i.entity_type, i.entity_value) }} · {% endif %}risk <b>{{ (i.risk_score or 0)|round|int }}</b> · {{ i.signal_count }} detection(s) · activity {{ i.first_event_ts|ts }} → {{ i.last_event_ts|ts }} UTC · opened {{ i.created_at|ts }} UTC{% if i.assignee %} · assignee {{ i.assignee }}{% endif %}</p></div>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="panel-heading"><div><h3>Detections timeline</h3><p>Every rule match attached to this incident</p></div></div>
+    <div class="timeline">{% for s in signals %}
+      <div class="tl-item sev-{{ s.level|lower }}"><span class="tl-time mono">{{ s.ts|ts }}</span>
+        <div><b><a href="{{ url_for('rule_page', rule_id=s.rule_id) }}">{{ s.rule_title }}</a></b> {{ sev(s.level) }} <span class="risk-pill">+{{ s.risk_score|round|int }}</span>
+        <p>{{ s.message|pii }}</p><small>{{ entity(s.entity_type, s.entity_value) }}{% if s.mitre %} · {{ s.mitre }}{% endif %}{% if s.event_id %} · event #{{ s.event_id }}{% endif %}</small></div></div>
+    {% else %}<div class="empty-state small"><b>No detections attached</b><p>Legacy alert from an earlier version.</p></div>{% endfor %}</div>
+  </article>
+  <article class="panel">
+    <div class="panel-heading"><div><h3>Context</h3><p>Who / what is this entity?</p></div></div>
+    {% if context.asset %}{% set a = context.asset %}
+      <div class="kv"><span>Asset</span><b>{{ a.name or a.hostname or a.ip }}</b><span>Criticality</span><b>{{ a.criticality }}/5 {{ '★' * a.criticality }}</b><span>Owner</span><b>{{ a.owner or '— (set on Assets page)' }}</b><span>Tags</span><b>{{ a.tags or '—' }}</b><span>Source</span><b>{{ 'auto-discovered' if a.auto else 'inventory' }}</b></div>
+    {% elif context.identity %}{% set u = context.identity %}
+      <div class="kv"><span>User</span><b>{{ u.username|pii('user') }}</b><span>Name</span><b>{{ u.display_name or '—' }}</b><span>Department</span><b>{{ u.department or '—' }}</b><span>Privileged</span><b>{{ 'Yes (risk ×1.5)' if u.privileged else 'No' }}</b><span>Source</span><b>{{ 'auto-discovered' if u.auto else 'directory' }}</b></div>
+    {% else %}<p class="form-hint">No inventory record for this entity. {% if i.entity_type == 'ip' %}External IP — country from logs: {{ countries|join(', ') or 'unknown' }}.{% endif %} Add assets and users on the <a class="text-link" href="{{ url_for('assets_page') }}">Assets &amp; Users</a> page so risk reflects business impact.</p>{% endif %}
+    {% if techniques %}<div class="mini-table"><span>MITRE ATT&amp;CK</span>{% for tid, name in techniques %}<div><span>{{ name }}</span><b class="mono">{{ tid }}</b></div>{% endfor %}</div>{% endif %}
+    {% if i.entity_type == 'ip' %}<div class="mini-table"><span>BLOCKLIST</span><div><span>{{ i.entity_value|pii('ip') }}</span><b>{{ 'Blocked' if i.entity_value in blocked else 'Not blocked' }}</b></div></div>{% endif %}
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel" id="response">
+    <div class="panel-heading"><div><h3>Response</h3><p>Playbooks (SOAR) and checklist</p></div><a class="text-link" href="{{ url_for('response_page') }}">Response center →</a></div>
+    {% for r in runs %}<div class="run-card status-{{ r.status }}"><div class="run-top"><b>{{ r.playbook_title or r.playbook_id }}</b><span class="status-badge {{ 'resolved' if r.status == 'done' else 'new' }}">{{ r.status|replace('_',' ') }}</span></div>
+      <ul>{% for a in r.actions %}<li><span class="mono">{{ a.type }}</span> — {{ a.status }}: {{ a.detail|pii }}</li>{% endfor %}</ul>
+      {% if r.status == 'pending_approval' and has_role('analyst') %}<div class="inline-form">
+        <form method="post" action="{{ url_for('playbook_decision', run_id=r.id, decision='approve') }}">{{ csrf() }}<button class="btn btn-primary btn-small">Approve &amp; run</button></form>
+        <form method="post" action="{{ url_for('playbook_decision', run_id=r.id, decision='reject') }}">{{ csrf() }}<button class="btn btn-ghost btn-small">Reject</button></form></div>{% endif %}
+    </div>{% else %}<p class="form-hint">No playbook has run for this incident.</p>{% endfor %}
+    {% if has_role('analyst') %}<form class="inline-form run-manual" method="post" action="{{ url_for('incident_playbook', alert_id=i.id) }}">{{ csrf() }}
+      <select name="playbook">{% for p in playbooks %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select><button class="btn btn-secondary btn-small">Run playbook now</button></form>{% endif %}
+    <div class="tasks" id="tasks">{% for t in tasks %}
+      <form method="post" action="{{ url_for('incident_task', alert_id=i.id, task_id=t.id) }}" class="task {{ 'done' if t.done }}">{{ csrf() }}<input type="hidden" name="done" value="{{ 0 if t.done else 1 }}">
+        <button class="task-check" {{ 'disabled' if not has_role('analyst') }}>{{ '✓' if t.done else '' }}</button><span>{{ t.text|pii }}</span></form>{% endfor %}</div>
+  </article>
+  <article class="panel">
+    <div class="panel-heading"><div><h3>Triage</h3><p>Status, disposition and notes</p></div></div>
+    {% if has_role('analyst') %}<form class="stack-form" method="post" action="{{ url_for('incident_status', alert_id=i.id) }}">{{ csrf() }}
+      <div class="form-row"><label>Status<select name="status">{% for s in ['New','Investigating','Resolved'] %}<option {{ 'selected' if i.status == s }}>{{ s }}</option>{% endfor %}</select></label>
+      <label>Disposition<select name="disposition"><option value="">—</option>{% for d in ['True positive','False positive','Benign','Undetermined'] %}<option {{ 'selected' if i.disposition == d }}>{{ d }}</option>{% endfor %}</select></label></div>
+      <label>Assignee<input name="assignee" value="{{ i.assignee or '' }}" placeholder="name"></label>
+      <button class="btn btn-primary">Save</button>
+      <p class="form-hint">Dispositions feed the false-positive rate per rule on the Metrics and Detection pages.</p></form>{% endif %}
+    <div id="notes" class="notes">{% for n in notes %}<div class="note"><small>{{ n.author }} · {{ n.created_at|ts }} UTC</small><p>{{ n.text }}</p></div>{% endfor %}</div>
+    {% if has_role('analyst') %}<form class="stack-form" method="post" action="{{ url_for('incident_note', alert_id=i.id) }}">{{ csrf() }}<textarea name="text" rows="3" placeholder="Add an investigation note…" required></textarea><button class="btn btn-secondary btn-small">Add note</button></form>{% endif %}
+  </article>
+</section>
+
+<section class="panel"><div class="panel-heading"><div><h3>Evidence events</h3><p>Records that triggered the detections</p></div></div>
+{% if events %}<div class="table-scroll"><table><thead><tr><th>TIME</th><th>TYPE</th><th>SEVERITY</th><th>USER / SRC → DST</th><th>DETAILS</th></tr></thead><tbody>
+{% for e in events %}<tr><td class="mono">{{ e.timestamp|ts }}<small class="cell-sub">#{{ e.id }}</small></td><td><b>{{ e.event_type }}</b><small class="cell-sub">{{ e.source }}</small></td><td>{{ sev(e.severity) }}</td>
+<td class="mono">{{ e.username|pii('user') or '—' }}<small class="cell-sub">{{ e.source_ip|pii('ip') or '—' }}{% if e.dest_ip %} → {{ e.dest_ip|pii('ip') }}{% if e.dest_port %}:{{ e.dest_port }}{% endif %}{% endif %}{% if e.country %} · {{ e.country }}{% endif %}</small></td>
+<td class="details-cell">{{ e.details|pii }}{% for d in e.extra.get('_decoded', [])[:1] %}<small class="cell-sub decoded">decoded: {{ d[:160] }}</small>{% endfor %}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-state small"><b>No evidence events (they may have been purged by retention).</b></div>{% endif %}
+</section>
+{% endblock %}

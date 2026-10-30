@@ -1,0 +1,28 @@
+id: web-scanning-error-burst
+title: Scanning - burst of HTTP 4xx/5xx from one IP
+status: stable
+level: medium
+author: MiniSOC
+description: A single IP generates many client/server errors in a few minutes, typical of directory brute forcing and vulnerability scanners.
+logsource: {category: web}
+mitre: [T1595.002, T1595.003]
+detection:
+  selection:
+    http_status|gte: 400
+  condition: selection
+  aggregate: {function: count, group_by: [source_ip], timeframe: 5m, threshold: 40}
+risk:
+  - {entity: source_ip, score: 40}
+dedup: 30m
+message: "{source_ip} caused {value} HTTP error responses within {timeframe}"
+falsepositives: [Broken links crawled by a search engine, Monitoring checks against a removed endpoint]
+response: [block-attacker-ip]
+tests:
+  - name: fifty 404s in two minutes match
+    expect: match
+    events:
+      - {event_type: WebRequest, source_ip: 203.0.113.50, http_status: 404, url_path: "/admin{i}.php", repeat: 50, step: 2s}
+  - name: normal 200 traffic does not match
+    expect: no_match
+    events:
+      - {event_type: WebRequest, source_ip: 203.0.113.50, http_status: 200, repeat: 100, step: 1s}

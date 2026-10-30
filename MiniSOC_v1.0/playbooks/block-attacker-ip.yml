@@ -1,0 +1,16 @@
+id: block-attacker-ip
+title: Block attacking IP at the edge
+description: >
+  When an external IP crosses the risk threshold, put it (and any malware download hosts found
+  in its payloads) on the blocklist feed for 72 hours. A WAF/firewall that pulls
+  /feeds/blocklist.txt (or the WAF webhook) enforces the block within seconds.
+trigger:
+  on: [created, escalated]
+  min_severity: Medium
+  entity_types: [ip]
+  entity_scope: external
+mode: auto
+actions:
+  - {type: blocklist_add, ttl_hours: 72, include_iocs: true}
+  - type: create_task
+    tasks: ["Confirm the WAF / firewall has pulled the blocklist and {entity} is blocked"]

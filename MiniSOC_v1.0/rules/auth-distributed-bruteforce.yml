@@ -1,0 +1,28 @@
+id: auth-distributed-bruteforce
+title: Distributed brute force on one account
+status: stable
+level: high
+author: MiniSOC
+description: Many different IPs fail to log in to the same account - a botnet trying to evade per-IP rate limits.
+logsource: {category: authentication}
+mitre: [T1110.001]
+detection:
+  selection:
+    event_type: FailedLogin
+  condition: selection
+  aggregate: {function: distinct_count, field: source_ip, group_by: [username], timeframe: 15m, threshold: 8}
+risk:
+  - {entity: username, score: 50}
+dedup: 30m
+message: "Account {username} received failed logins from {value} different IPs within {timeframe}"
+falsepositives: [Mobile users roaming between networks with a stale saved password]
+response: [protect-account]
+tests:
+  - name: ten IPs on one account match
+    expect: match
+    events:
+      - {event_type: FailedLogin, source_ip: "203.0.113.{i}", username: finance01, repeat: 10, step: 30s}
+  - name: three IPs do not match
+    expect: no_match
+    events:
+      - {event_type: FailedLogin, source_ip: "203.0.113.{i}", username: finance01, repeat: 3, step: 30s}

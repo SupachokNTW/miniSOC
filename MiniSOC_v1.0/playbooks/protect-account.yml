@@ -1,0 +1,17 @@
+id: protect-account
+title: Protect a possibly compromised account
+description: >
+  Account takeover, credential stuffing success or API exfiltration on a user. Suspending an
+  account affects a real person, so this playbook waits for analyst approval.
+trigger:
+  on: [created, escalated]
+  min_severity: High
+  entity_types: [user]
+mode: approval
+actions:
+  - {type: disable_user}
+  - type: create_task
+    tasks:
+      - "Reset the password of {entity} and revoke all sessions / API tokens"
+      - "Check MFA enrolment of {entity}; re-enrol if it was changed"
+      - "Review what {entity} did after the first suspicious signal (data access, changes)"

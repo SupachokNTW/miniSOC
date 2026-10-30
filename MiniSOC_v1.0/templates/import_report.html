@@ -1,0 +1,166 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf, sev, entity %}
+{% set imp = r.import %}{% set s = r.summary %}
+{% block title %}Import #{{ imp.id }} report{% endblock %}{% block heading %}Log Analysis{% endblock %}
+{% block content %}
+<section class="welcome-row">
+  <div>
+    <h2>Import #{{ imp.id }} · {{ imp.filename }}</h2>
+    <p>{{ imp.vendor or 'Generic log' }} · {{ formats.get(imp.file_format, imp.file_format) }} · timestamps read as {{ 'this computer\'s time zone' if imp.timezone == 'local' else imp.timezone }} · imported {{ imp.created_at[:19].replace('T',' ') }} UTC</p>
+  </div>
+  <div class="button-row">
+    <a class="btn btn-secondary" href="{{ url_for('events_page', import=imp.id) }}">▤ Events</a>
+    <a class="btn btn-secondary" href="{{ url_for('events_export', import=imp.id) }}">⬇ ECS NDJSON</a>
+    <a class="btn btn-secondary" href="{{ url_for('import_iocs_csv', import_id=imp.id) }}">⬇ IOCs CSV</a>
+    <a class="btn btn-secondary" href="{{ url_for('import_report_json', import_id=imp.id) }}">⬇ Report JSON</a>
+    <button class="btn btn-ghost" onclick="window.print()">⎙ Print</button>
+  </div>
+</section>
+
+{% if imp.warnings %}<div class="flash-stack">{% for w in imp.warnings %}<div class="flash error">{{ w }}</div>{% endfor %}</div>{% endif %}
+
+<section class="verdict verdict-{{ r.overall|lower }}">
+  <div class="verdict-badge"><small>OVERALL RISK</small><b>{{ r.overall }}</b></div>
+  <div class="verdict-text">
+    <b>{{ r.findings|length }} finding(s){% if r.findings and r.findings[0].severity != 'Info' %} — top: {{ r.findings[0].title }}{% endif %}</b>
+    <p>Log time {{ s.first }} → {{ s.last }} ({{ s.span }}).{% if r.meta.get('Period') %} Report period: {{ r.meta.get('Period') }}.{% endif %}
+    {% set filters = [] %}{% for k in ['Threat Level','Action','Type','Src IP','Dst IP'] %}{% if r.meta.get(k) and r.meta.get(k) != 'All' %}{% set _ = filters.append(k ~ ': ' ~ r.meta.get(k)) %}{% endif %}{% endfor %}
+    {% if filters %}<br>Export filters: {{ filters|join(' · ') }}{% endif %}</p>
+  </div>
+</section>
+
+<section class="stats-grid">
+  <article class="stat-card"><div class="stat-top"><span>Events</span><span class="stat-icon">▤</span></div><strong>{{ s.events|num }}</strong><small>{{ s.high_or_critical|num }} High/Critical · {{ imp.skipped }} skipped</small></article>
+  <article class="stat-card"><div class="stat-top"><span>Sources</span><span class="stat-icon amber">◉</span></div><strong>{{ s.unique_sources }}</strong><small>{{ s.external_sources }} external IPs · {{ s.internal_targets }} internal targets</small></article>
+  <article class="stat-card"><div class="stat-top"><span>Firewall action</span><span class="stat-icon red">⛨</span></div><strong>{{ s.allowed }}<span class="stat-of"> allowed</span></strong><small>{{ s.blocked }} blocked · {{ s.events - s.allowed - s.blocked }} not recorded</small></article>
+  <article class="stat-card"><div class="stat-top"><span>Incidents / IOCs</span><span class="stat-icon">⚑</span></div><strong>{{ s.alerts }}<span class="stat-of"> / {{ s.iocs }}</span></strong><small>Incidents · malicious indicators</small></article>
+</section>
+
+<section class="pipeline">
+  <div><small>RECORDS IN FILE</small><b>{{ r.pipeline.raw|num }}</b></div><span>→</span>
+  <div><small>STORED ROWS</small><b>{{ r.pipeline.stored|num }}</b><em>{{ r.pipeline.reduction }}% smaller</em></div><span>→</span>
+  <div><small>DETECTIONS</small><b>{{ r.pipeline.signals|num }}</b></div><span>→</span>
+  <div><small>INCIDENTS</small><b>{{ r.pipeline.incidents }}</b><em>risk-based</em></div>
+</section>
+
+{% if r.detections %}<section class="panel">
+  <div class="panel-heading"><div><h3>Detections (rules)</h3><p>Detection-as-Code rules that matched this file</p></div><a class="text-link" href="{{ url_for('detection_page') }}">Rules →</a></div>
+  <div class="table-scroll"><table><thead><tr><th>RULE</th><th>LEVEL</th><th>MATCHES</th><th>RISK ADDED</th><th>ENTITIES</th><th>EXAMPLE</th></tr></thead><tbody>
+  {% for d in r.detections %}<tr><td class="wrap"><a href="{{ url_for('rule_page', rule_id=d.rule_id) }}"><b>{{ d.title }}</b></a><small class="cell-sub">{{ d.rule_id }} · {{ d.mitre }}</small></td><td>{{ sev(d.level) }}</td><td><b>{{ d.signals }}</b></td><td>{{ d.risk }}</td><td class="mono">{{ d.entity_count }}</td><td class="details-cell">{{ d.example|pii }}</td></tr>{% endfor %}
+  </tbody></table></div></section>{% endif %}
+
+<section class="panel">
+  <div class="panel-heading"><div><h3>Findings</h3><p>Correlated, explainable observations — verify before acting</p></div><span class="subtle-chip">{{ r.findings|length }} FINDINGS</span></div>
+  <div class="finding-list">
+  {% for f in r.findings %}
+    <details class="finding sev-{{ f.severity|lower }}" {{ 'open' if loop.index <= 3 and f.severity in ['Critical','High'] else '' }}>
+      <summary><span class="severity-badge {{ f.severity|lower }}">{{ f.severity }}</span><b>{{ f.title }}</b><small>{{ f.category }}</small></summary>
+      <p class="finding-summary">{{ f.summary }}</p>
+      {% if f.evidence %}<div class="finding-block"><span>EVIDENCE</span><ul>{% for ev in f.evidence %}<li>{{ ev|pii }}</li>{% endfor %}</ul></div>{% endif %}
+      {% if f.recommendations %}<div class="finding-block rec"><span>RECOMMENDED ACTIONS</span><ul>{% for rec in f.recommendations %}<li>{{ rec }}</li>{% endfor %}</ul></div>{% endif %}
+    </details>
+  {% endfor %}
+  </div>
+</section>
+
+<section class="content-grid">
+  <article class="panel chart-panel"><div class="panel-heading"><div><h3>Event timeline</h3><p>Events per {{ r.timeline.bucket or 'bucket' }} by severity (log clock time)</p></div></div>
+    <div class="chart-wrap tall"><canvas id="timelineChart"></canvas><div id="timelineEmpty" class="empty-chart" hidden>No timestamps to chart.</div></div></article>
+  <article class="panel"><div class="panel-heading"><div><h3>Breakdown</h3><p>Severity, type and action</p></div></div>
+    <div class="severity-list compact">
+      {% for name, color in [('Critical','#f05252'),('High','#f59e0b'),('Medium','#e6c14a'),('Low','#43b581'),('Info','#7d8ca3')] %}
+      {% set cnt = (r.severity|selectattr('name','equalto',name)|first).count %}
+      <div class="severity-row"><span class="severity-dot" style="background:{{ color }}"></span><span>{{ name }}</span><b>{{ cnt }}</b></div>
+      {% endfor %}
+    </div>
+    <div class="mini-table">
+      <span>EVENT TYPES</span>{% for name, n in r.event_types[:8] %}<div><span>{{ name }}</span><b>{{ n }}</b></div>{% endfor %}
+      <span>ACTIONS</span>{% for name, n in r.actions[:5] %}<div><span>{{ name }}</span><b>{{ n }}</b></div>{% endfor %}
+      {% if r.ports %}<span>TARGETED PORTS (INBOUND)</span>{% for name, n in r.ports[:6] %}<div><span>{{ name }}</span><b>{{ n }}</b></div>{% endfor %}{% endif %}
+      {% if r.countries %}<span>SOURCE COUNTRIES</span>{% for name, n in r.countries[:6] %}<div><span>{{ name }}</span><b>{{ n }}</b></div>{% endfor %}{% endif %}
+      {% if r.users %}<span>ACCOUNTS</span>{% for name, n in r.users[:6] %}<div><span>{{ name }}</span><b>{{ n }}</b></div>{% endfor %}{% endif %}
+    </div>
+  </article>
+</section>
+
+{% if r.recommendations %}
+<section class="panel">
+  <div class="panel-heading"><div><h3>Priority actions</h3><p>Top recommendations, ordered by finding severity</p></div></div>
+  <ol class="action-list">{% for rec in r.recommendations %}<li><span class="severity-badge {{ rec.severity|lower }}">{{ rec.severity }}</span><span>{{ rec.text }}<small>{{ rec.finding }}</small></span></li>{% endfor %}</ol>
+</section>
+{% endif %}
+
+{% if r.top_sources %}
+<section class="panel">
+  <div class="panel-heading"><div><h3>Top source IPs</h3><p>Who generated the most events</p></div></div>
+  <div class="table-scroll"><table><thead><tr><th>SOURCE</th><th>LOCATION</th><th>EVENTS</th><th>MAX SEVERITY</th><th>SIGNATURES</th><th>TARGETS</th><th>SEEN</th></tr></thead><tbody>
+  {% for x in r.top_sources %}<tr>
+    <td><a class="mono" href="{{ url_for('events_page', import=imp.id, q=x.ip) }}">{{ x.ip|pii('ip') }}</a><small class="cell-sub">{{ 'internal' if x.internal else 'external' }}{% if x.scanner %} · scanner: {{ x.scanner }}{% endif %}</small></td>
+    <td>{{ x.location or '—' }}</td><td><b>{{ x.events }}</b><small class="cell-sub">{{ x.allowed }} allowed</small></td>
+    <td><span class="severity-badge {{ x.max_severity|lower }}">{{ x.max_severity }}</span></td>
+    <td>{{ x.signatures }}<small class="cell-sub">{{ x.top_signature[:60] }}</small></td>
+    <td class="mono">{{ x.targets[:3]|join(', ')|pii }}{% if x.targets|length > 3 %} +{{ x.targets|length - 3 }}{% endif %}</td>
+    <td class="mono">{{ x.first[5:16] }}<small class="cell-sub">→ {{ x.last[5:16] }}</small></td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+
+<section class="content-grid even">
+  {% if r.top_targets %}
+  <article class="panel"><div class="panel-heading"><div><h3>Targeted assets</h3><p>Internal hosts receiving the most events</p></div></div>
+    <div class="table-scroll"><table><thead><tr><th>TARGET</th><th>EVENTS</th><th>PORTS</th><th>ATTACKERS</th><th>MAX</th></tr></thead><tbody>
+    {% for t in r.top_targets %}<tr><td><a class="mono" href="{{ url_for('events_page', import=imp.id, q=t.target) }}">{{ t.target }}</a>{% if t.hostnames %}<small class="cell-sub">{{ t.hostnames|join(', ') }}</small>{% endif %}</td><td><b>{{ t.events }}</b></td><td class="mono">{{ t.ports[:4]|join(', ') or '—' }}</td><td>{{ t.attackers }}</td><td><span class="severity-badge {{ t.max_severity|lower }}">{{ t.max_severity }}</span></td></tr>{% endfor %}
+    </tbody></table></div></article>
+  {% endif %}
+  <article class="panel"><div class="panel-heading"><div><h3>Indicators of compromise</h3><p>C2 destinations and payload download hosts</p></div><a class="text-link" href="{{ url_for('import_iocs_csv', import_id=imp.id) }}">CSV →</a></div>
+    {% if r.iocs %}<div class="table-scroll"><table><thead><tr><th>INDICATOR</th><th>VERDICT</th><th>SEEN</th></tr></thead><tbody>
+    {% for i in r.iocs[:25] %}<tr><td class="mono wrap">{{ i.value[:90] }}<small class="cell-sub">{{ i.type }} · {{ i.context[:70] }}</small></td><td><span class="severity-badge {{ 'info' if i.scanner_only else ('critical' if i.type == 'c2' else 'high') }}">{{ i.verdict }}</span></td><td>{{ i.count }}×</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<div class="empty-state small"><b>No indicators extracted</b><p>No payload download hosts or C2 destinations were found in this file.</p></div>{% endif %}
+  </article>
+</section>
+
+{% if r.signatures %}
+<section class="panel">
+  <div class="panel-heading"><div><h3>Signatures / event names</h3><p>What was detected, ordered by severity</p></div></div>
+  <div class="table-scroll"><table><thead><tr><th>SIGNATURE</th><th>TYPE</th><th>SEVERITY</th><th>EVENTS</th><th>ATTACKERS</th><th>TARGETS</th><th>HTTP RESPONSES</th></tr></thead><tbody>
+  {% for g in r.signatures %}<tr><td class="wrap"><a href="{{ url_for('events_page', import=imp.id, q=g.signature[:60]) }}"><b>{{ g.signature[:110] }}</b></a>{% if g.cves %}<small class="cell-sub">{{ g.cves|join(', ') }}</small>{% endif %}</td><td>{{ g.type }}</td><td><span class="severity-badge {{ g.max_severity|lower }}">{{ g.max_severity }}</span></td><td><b>{{ g.events }}</b></td><td>{{ g.attackers }}</td><td>{{ g.targets }}</td><td class="mono">{% for code, n in g.statuses.items() %}{{ code }}×{{ n }} {% else %}—{% endfor %}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-heading"><div><h3>Incidents from this import</h3><p>Opened or updated by risk-based alerting</p></div><a class="text-link" href="{{ url_for('incidents_page') }}">All incidents →</a></div>
+  {% if r.alerts %}<div class="table-scroll"><table><thead><tr><th>ALERT</th><th>RULE</th><th>SEVERITY</th><th>WHY IT FIRED</th><th>STATUS</th></tr></thead><tbody>
+  {% for a in r.alerts[:60] %}<tr><td><a href="{{ url_for('incident_page', alert_id=a.id) }}"><b>{{ a.title|pii }}</b></a><small class="cell-sub">#{{ a.id }} · first activity {{ a.event_time|ts }} UTC · {{ a.signal_count }} detection(s)</small></td><td>{{ a.rule_name }}</td><td><span class="severity-badge {{ a.severity|lower }}">{{ a.severity }}</span></td><td class="details-cell">{{ a.explanation|pii }}</td><td><span class="status-badge {{ a.status|lower }}">{{ a.status }}</span></td></tr>{% endfor %}
+  </tbody></table></div>{% if r.alerts|length > 60 %}<p class="form-hint">Showing 60 of {{ r.alerts|length }} alerts.</p>{% endif %}
+  {% else %}<div class="empty-state small"><b>No alerts</b><p>No enabled detection rule matched these events.</p></div>{% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-heading"><div><h3>Event sample</h3><p>First {{ r.sample_events|length }} events in time order</p></div><a class="text-link" href="{{ url_for('events_page', import=imp.id) }}">View all {{ s.events }} →</a></div>
+  <div class="table-scroll"><table><thead><tr><th>TIME</th><th>TYPE</th><th>SEVERITY</th><th>SRC → DST</th><th>DETAILS</th></tr></thead><tbody>
+  {% for e in r.sample_events %}<tr><td class="mono">{{ e.timestamp[:19].replace('T',' ') }}</td><td><b>{{ e.event_type }}</b><small class="cell-sub">{{ e.action or '' }}</small></td><td><span class="severity-badge {{ e.severity|lower }}">{{ e.severity }}</span></td><td class="mono">{{ e.source_ip|pii('ip') or '—' }}<small class="cell-sub">→ {{ (e.dest_ip or e.host)|pii('ip') }}{% if e.dest_port %}:{{ e.dest_port }}{% endif %}</small></td><td class="details-cell">{{ e.details[:220]|pii }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<div class="note-box wide-note"><b>How to read this report</b><p>Findings are heuristics that correlate events inside this one file (for example: an internal host that was brute-forced and later contacted a miner C2 server). They speed up triage but are not proof of compromise, and they cannot see events that were filtered out of the export. Confirm each finding on the affected systems.</p></div>
+
+{% if has_role('analyst') %}<form class="danger-zone" method="post" action="{{ url_for('delete_import_route', import_id=imp.id) }}" onsubmit="return confirm('Delete import #{{ imp.id }} with all its events and detections?')">{{ csrf() }}<button class="btn btn-small btn-danger">Delete this import</button><small>Removes its stored events and detections; incidents left without evidence are removed too.</small></form>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+const tl = {{ r.timeline|tojson }};
+const colors = {Critical:'#f05252', High:'#f59e0b', Medium:'#e6c14a', Low:'#43b581', Info:'#7d8ca3'};
+const canvas = document.getElementById('timelineChart');
+if (!tl.labels.length || typeof Chart === 'undefined') {
+  canvas.hidden = true; document.getElementById('timelineEmpty').hidden = false;
+  if (typeof Chart === 'undefined' && tl.labels.length) document.getElementById('timelineEmpty').textContent = 'Chart library could not load (offline).';
+} else {
+  const datasets = Object.keys(colors).filter(k => tl.series[k]).map(k => ({label:k, data:tl.series[k], backgroundColor:colors[k], borderRadius:3, maxBarThickness:28}));
+  new Chart(canvas, {type:'bar', data:{labels:tl.labels, datasets}, options:{responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#a4adbb', boxWidth:10, font:{size:11}}}},
+    scales:{x:{stacked:true, grid:{display:false}, ticks:{color:'#8791a2', maxRotation:0, autoSkip:true, maxTicksLimit:12}},
+            y:{stacked:true, beginAtZero:true, ticks:{precision:0, color:'#8791a2'}, grid:{color:'rgba(150,160,180,.12)'}}}}});
+}
+</script>
+{% endblock %}

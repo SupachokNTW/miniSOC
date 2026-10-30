@@ -1,0 +1,15 @@
+{% from "_macros.html" import csrf %}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup · MiniSOC</title><link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head>
+<body class="auth-body"><main class="auth-card">
+  <div class="brand"><span class="brand-mark">M</span><span><b>MiniSOC</b><small>FIRST-TIME SETUP</small></span></div>
+  <h2>Create the administrator</h2>
+  <p class="form-hint">This page is only available from this computer while no account exists.</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for c, m in messages %}<div class="flash {{ c }}">{{ m }}</div>{% endfor %}{% endwith %}
+  <form method="post" class="stack-form">{{ csrf() }}
+    <label>Username<input name="username" value="admin" required></label>
+    <label>Password (10+ characters, letters and digits)<input name="password" type="password" minlength="10" required></label>
+    <label>Confirm password<input name="confirm" type="password" minlength="10" required></label>
+    <button class="btn btn-primary btn-wide">Create administrator</button>
+  </form>
+</main></body></html>

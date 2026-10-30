@@ -1,0 +1,25 @@
+id: web-http-error-spike
+title: Sudden spike of HTTP 5xx errors
+status: experimental
+level: medium
+author: MiniSOC
+type: builtin
+handler: http_error_spike
+description: The number of server errors in a 5-minute bucket jumps far above the 24-hour baseline (mean + 4 sigma, at least 50). Can indicate exploitation attempts, a DoS or a broken deployment.
+logsource: {category: web}
+mitre: [T1190, T1499]
+params: {bucket: 5m, min_errors: 50, sigma: 4, status_min: 500, baseline: 24h}
+risk:
+  - {entity: host, score: 30}
+dedup: 30m
+message: "{errors} HTTP >= {status_min} responses on {service} in {bucket} (baseline mean {baseline_mean})"
+falsepositives: [Deployments and outages]
+tests:
+  - name: spike of 80 errors matches
+    expect: match
+    events:
+      - {event_type: WebRequest, host: shop, http_status: 503, source_ip: 192.0.2.1, repeat: 80, step: 2s}
+  - name: few errors do not match
+    expect: no_match
+    events:
+      - {event_type: WebRequest, host: shop, http_status: 500, source_ip: 192.0.2.1, repeat: 10, step: 20s}

@@ -1,0 +1,32 @@
+id: auth-failed-login-burst
+title: Failed login burst from one source
+status: stable
+level: medium
+author: MiniSOC
+description: Five or more failed logins from the same source IP within five minutes (brute force / password guessing).
+logsource: {category: authentication}
+mitre: [T1110.001]
+detection:
+  selection:
+    event_type: FailedLogin
+  condition: selection
+  aggregate: {function: count, group_by: [source_ip], timeframe: 5m, threshold: 5}
+risk:
+  - {entity: source_ip, score: 30}
+dedup: 5m
+message: "{value} failed logins from {source_ip} within {timeframe} (accounts: {username})"
+falsepositives: [Users who forgot a password, Misconfigured service accounts retrying]
+response: [block-attacker-ip]
+tests:
+  - name: five failures in two minutes match
+    expect: match
+    events:
+      - {event_type: FailedLogin, source_ip: 203.0.113.9, username: admin, repeat: 5, step: 20s}
+  - name: four failures do not match
+    expect: no_match
+    events:
+      - {event_type: FailedLogin, source_ip: 203.0.113.9, username: admin, repeat: 4, step: 20s}
+  - name: failures spread over 30 minutes do not match
+    expect: no_match
+    events:
+      - {event_type: FailedLogin, source_ip: 203.0.113.9, username: admin, repeat: 6, step: 6m}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf, sev, entity %}
+{% block title %}{{ rule.title }}{% endblock %}{% block heading %}Rule{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><h2>{{ rule.title }}</h2><p>{{ rule.description }}</p></div>
+<div class="button-row">{{ sev(rule.level) }}<span class="subtle-chip">{{ 'ENABLED' if enabled else 'DISABLED' }}</span>{% if has_role('admin') %}<form method="post" action="{{ url_for('toggle_rule', rule_id=rule.id) }}">{{ csrf() }}<input type="hidden" name="enabled" value="{{ 0 if enabled else 1 }}"><button class="btn btn-secondary btn-small">{{ 'Disable' if enabled else 'Enable' }}</button></form>{% endif %}</div></section>
+<section class="content-grid">
+  <article class="panel"><div class="panel-heading"><div><h3>Definition</h3><p>rules/{{ rule.path.split('/')[-1] }}</p></div></div><pre class="code">{{ rule.source }}</pre></article>
+  <article class="panel"><div class="panel-heading"><div><h3>Facts</h3></div></div>
+    <div class="kv"><span>ID</span><b class="mono">{{ rule.id }}</b><span>Type</span><b>{{ rule.type }}{% if rule.handler %} ({{ rule.handler }}){% endif %}</b>
+    <span>Risk</span><b>{% for x in rule.risk %}{{ x.entity }} +{{ x.score|int }} {% endfor %}</b><span>Opens incident directly</span><b>{{ 'Yes' if rule.alert else 'No — via risk threshold' }}</b>
+    <span>De-duplication</span><b>{{ (rule.dedup // 60) ~ ' min' if rule.dedup else 'none' }}</b><span>30-day matches</span><b>{{ stats.n or 0 }}</b></div>
+    <div class="mini-table"><span>MITRE ATT&amp;CK</span>{% for tid, name in techniques %}<div><span>{{ name }}</span><b class="mono">{{ tid }}</b></div>{% endfor %}
+    {% if rule.false_positives %}<span>KNOWN FALSE POSITIVES</span>{% for fp in rule.false_positives %}<div><span>{{ fp }}</span></div>{% endfor %}{% endif %}
+    {% if rule.response %}<span>RESPONSE PLAYBOOKS</span>{% for p in rule.response %}<div><span class="mono">{{ p }}</span></div>{% endfor %}{% endif %}</div>
+    <div class="mini-table"><span>TESTS</span>{% for t in tests %}<div><span>{{ '✓' if t.passed else '✗' }} {{ t.name }} <small>({{ t.expect }})</small></span><b class="{{ '' if t.passed else 'warn-text' }}">{{ 'pass' if t.passed else 'FAIL' }}</b></div>{% else %}<div><span>No tests — add some before trusting this rule.</span></div>{% endfor %}</div>
+  </article>
+</section>
+<section class="panel"><div class="panel-heading"><div><h3>Recent matches</h3><p>Latest 50 detections</p></div></div>
+{% if recent %}<div class="table-scroll"><table><thead><tr><th>TIME</th><th>ENTITY</th><th>RISK</th><th>MESSAGE</th><th>INCIDENT</th></tr></thead><tbody>
+{% for s in recent %}<tr><td class="mono">{{ s.ts|ts }}</td><td>{{ entity(s.entity_type, s.entity_value) }}</td><td>+{{ s.risk_score|round|int }}</td><td class="details-cell">{{ s.message|pii }}</td><td>{% if s.alert_id %}<a class="text-link" href="{{ url_for('incident_page', alert_id=s.alert_id) }}">#{{ s.alert_id }}</a>{% else %}<small class="cell-sub">below threshold</small>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-state small"><b>No matches yet</b></div>{% endif %}</section>
+{% endblock %}

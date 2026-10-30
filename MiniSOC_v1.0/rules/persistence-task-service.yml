@@ -1,0 +1,24 @@
+id: persistence-task-service
+title: Persistence - scheduled task or new service
+status: stable
+level: medium
+author: MiniSOC
+description: A scheduled task, service or autorun entry was created (Windows 4698/7045/4697 or keyword).
+logsource: {category: host}
+mitre: [T1053.005, T1543.003]
+detection:
+  sel_type:
+    event_type: [ScheduledTaskCreated, ServiceInstalled, Persistence]
+  sel_keyword:
+    - scheduled task
+    - autorun
+  condition: 1 of sel_*
+risk:
+  - {entity: host, score: 40}
+message: "{event_type} on {host}: {details}"
+falsepositives: [Software installation and updates]
+tests:
+  - name: service install matches
+    expect: match
+    events:
+      - {event_type: ServiceInstalled, host: WS-01, details: "Service=evil"}
