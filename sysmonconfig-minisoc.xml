@@ -1,0 +1,191 @@
+<!--
+  MiniSOC 2.3 - Sysmon configuration
+  Tuned for the detections in detection.py: full process creation, targeted network / file /
+  registry / lsass monitoring, and noisy event types switched off. Requires Sysmon 15+.
+
+  Apply / update:  Sysmon64.exe -c sysmonconfig-minisoc.xml   (install_sysmon.bat does this)
+  Rule of thumb: onmatch="include" logs ONLY what matches; onmatch="exclude" logs everything EXCEPT what matches.
+-->
+<Sysmon schemaversion="4.90">
+  <HashAlgorithms>SHA256</HashAlgorithms>
+  <CheckRevocation/>
+  <EventFiltering>
+
+    <!-- 1: every process creation (the most valuable event Sysmon has) -->
+    <RuleGroup name="ProcessCreate" groupRelation="or">
+      <ProcessCreate onmatch="exclude"/>
+    </RuleGroup>
+
+    <!-- 2: timestomping in user-writable places only -->
+    <RuleGroup name="FileCreateTime" groupRelation="or">
+      <FileCreateTime onmatch="include">
+        <TargetFilename condition="contains">\Users\Public\</TargetFilename>
+        <TargetFilename condition="contains">\Windows\Temp\</TargetFilename>
+        <TargetFilename condition="end with">.exe</TargetFilename>
+        <TargetFilename condition="end with">.dll</TargetFilename>
+      </FileCreateTime>
+    </RuleGroup>
+
+    <!-- 3: network connections, minus browsers / sync clients / loopback (tune to your machine) -->
+    <RuleGroup name="NetworkConnect" groupRelation="or">
+      <NetworkConnect onmatch="exclude">
+        <Image condition="end with">\chrome.exe</Image>
+        <Image condition="end with">\msedge.exe</Image>
+        <Image condition="end with">\msedgewebview2.exe</Image>
+        <Image condition="end with">\firefox.exe</Image>
+        <Image condition="end with">\brave.exe</Image>
+        <Image condition="end with">\opera.exe</Image>
+        <Image condition="end with">\OneDrive.exe</Image>
+        <Image condition="end with">\Teams.exe</Image>
+        <Image condition="end with">\ms-teams.exe</Image>
+        <Image condition="end with">\Spotify.exe</Image>
+        <Image condition="end with">\Discord.exe</Image>
+        <Image condition="end with">\steam.exe</Image>
+        <Image condition="end with">\steamwebhelper.exe</Image>
+        <Image condition="end with">\MsMpEng.exe</Image>
+        <DestinationIp condition="is">127.0.0.1</DestinationIp>
+        <DestinationIp condition="is">::1</DestinationIp>
+      </NetworkConnect>
+    </RuleGroup>
+
+    <!-- 5: process terminated - off -->
+    <RuleGroup name="ProcessTerminate" groupRelation="or">
+      <ProcessTerminate onmatch="include"/>
+    </RuleGroup>
+
+    <!-- 6: drivers not signed by Microsoft -->
+    <RuleGroup name="DriverLoad" groupRelation="or">
+      <DriverLoad onmatch="exclude">
+        <Signature condition="contains">Microsoft</Signature>
+      </DriverLoad>
+    </RuleGroup>
+
+    <!-- 7: DLL loads - off (very noisy) -->
+    <RuleGroup name="ImageLoad" groupRelation="or">
+      <ImageLoad onmatch="include"/>
+    </RuleGroup>
+
+    <!-- 8: remote thread creation (injection) -->
+    <RuleGroup name="CreateRemoteThread" groupRelation="or">
+      <CreateRemoteThread onmatch="exclude">
+        <SourceImage condition="is">C:\Windows\System32\csrss.exe</SourceImage>
+        <SourceImage condition="is">C:\Windows\System32\wininit.exe</SourceImage>
+        <SourceImage condition="is">C:\Windows\System32\dwm.exe</SourceImage>
+      </CreateRemoteThread>
+    </RuleGroup>
+
+    <!-- 9: raw disk reads - off -->
+    <RuleGroup name="RawAccessRead" groupRelation="or">
+      <RawAccessRead onmatch="include"/>
+    </RuleGroup>
+
+    <!-- 10: anything opening lsass.exe (credential theft) -->
+    <RuleGroup name="ProcessAccess" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <TargetImage condition="end with">\lsass.exe</TargetImage>
+      </ProcessAccess>
+    </RuleGroup>
+
+    <!-- 11: files in user document folders (ransomware), Startup folder, and scripts / executables dropped in temp -->
+    <RuleGroup name="FileCreate" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="contains">\Desktop\</TargetFilename>
+        <TargetFilename condition="contains">\Documents\</TargetFilename>
+        <TargetFilename condition="contains">\Pictures\</TargetFilename>
+        <TargetFilename condition="contains">\Downloads\</TargetFilename>
+        <TargetFilename condition="contains">\Start Menu\Programs\Startup\</TargetFilename>
+        <TargetFilename condition="contains">\Users\Public\</TargetFilename>
+        <TargetFilename condition="end with">.ps1</TargetFilename>
+        <TargetFilename condition="end with">.vbs</TargetFilename>
+        <TargetFilename condition="end with">.hta</TargetFilename>
+        <TargetFilename condition="end with">.bat</TargetFilename>
+        <TargetFilename condition="end with">.scr</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- 12/13/14: autostart, Defender and LSA registry locations -->
+    <RuleGroup name="RegistryEvent" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="contains">\CurrentVersion\Policies\Explorer\Run</TargetObject>
+        <TargetObject condition="contains">\Winlogon\Shell</TargetObject>
+        <TargetObject condition="contains">\Winlogon\Userinit</TargetObject>
+        <TargetObject condition="contains">\Image File Execution Options\</TargetObject>
+        <TargetObject condition="contains">\Explorer\Shell Folders\Startup</TargetObject>
+        <TargetObject condition="contains">\Environment\UserInitMprLogonScript</TargetObject>
+        <TargetObject condition="contains">\Control\Lsa\</TargetObject>
+        <TargetObject condition="contains">\AppInit_DLLs</TargetObject>
+        <TargetObject condition="contains">\Windows Defender\</TargetObject>
+        <TargetObject condition="end with">\ImagePath</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+
+    <!-- 15: alternate data streams - off -->
+    <RuleGroup name="FileCreateStreamHash" groupRelation="or">
+      <FileCreateStreamHash onmatch="include"/>
+    </RuleGroup>
+
+    <!-- 17/18: named pipes - off -->
+    <RuleGroup name="PipeEvent" groupRelation="or">
+      <PipeEvent onmatch="include"/>
+    </RuleGroup>
+
+    <!-- 19/20/21: every WMI subscription (rare and almost always interesting) -->
+    <RuleGroup name="WmiEvent" groupRelation="or">
+      <WmiEvent onmatch="exclude"/>
+    </RuleGroup>
+
+    <!-- 22: DNS queries, minus the biggest Microsoft / CDN noise -->
+    <RuleGroup name="DnsQuery" groupRelation="or">
+      <DnsQuery onmatch="exclude">
+        <QueryName condition="end with">.microsoft.com</QueryName>
+        <QueryName condition="end with">.windowsupdate.com</QueryName>
+        <QueryName condition="end with">.windows.com</QueryName>
+        <QueryName condition="end with">.msftncsi.com</QueryName>
+        <QueryName condition="end with">.office.com</QueryName>
+        <QueryName condition="end with">.office.net</QueryName>
+        <QueryName condition="end with">.live.com</QueryName>
+        <QueryName condition="end with">.bing.com</QueryName>
+        <Image condition="end with">\chrome.exe</Image>
+        <Image condition="end with">\msedge.exe</Image>
+        <Image condition="end with">\firefox.exe</Image>
+      </DnsQuery>
+    </RuleGroup>
+
+    <!-- 23: file delete ARCHIVING - off (would copy every deleted file to disk) -->
+    <RuleGroup name="FileDelete" groupRelation="or">
+      <FileDelete onmatch="include"/>
+    </RuleGroup>
+
+    <!-- 24: clipboard - off (privacy) -->
+    <RuleGroup name="ClipboardChange" groupRelation="or">
+      <ClipboardChange onmatch="include"/>
+    </RuleGroup>
+
+    <!-- 25: process hollowing / herpaderping -->
+    <RuleGroup name="ProcessTampering" groupRelation="or">
+      <ProcessTampering onmatch="exclude"/>
+    </RuleGroup>
+
+    <!-- 26: deletions in user document folders (logged, not archived) -->
+    <RuleGroup name="FileDeleteDetected" groupRelation="or">
+      <FileDeleteDetected onmatch="include">
+        <TargetFilename condition="contains">\Desktop\</TargetFilename>
+        <TargetFilename condition="contains">\Documents\</TargetFilename>
+        <TargetFilename condition="contains">\Pictures\</TargetFilename>
+      </FileDeleteDetected>
+    </RuleGroup>
+
+    <!-- 27/28/29: blocking features - off (MiniSOC is read-only) -->
+    <RuleGroup name="FileBlockExecutable" groupRelation="or">
+      <FileBlockExecutable onmatch="include"/>
+    </RuleGroup>
+    <RuleGroup name="FileBlockShredding" groupRelation="or">
+      <FileBlockShredding onmatch="include"/>
+    </RuleGroup>
+    <RuleGroup name="FileExecutableDetected" groupRelation="or">
+      <FileExecutableDetected onmatch="include"/>
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>
